@@ -236,8 +236,10 @@ async function claimCreatorName(user, displayName) {
   const { data: existing, error: lookupError } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
   if (lookupError) throw lookupError;
   if (existing?.display_name) {
-    if (existing.display_name !== name) throw new Error(`이 브라우저에는 ${existing.display_name} 이름이 연결되어 있어요.`);
-    return existing.display_name;
+    if (existing.display_name === name) return existing.display_name;
+    const { error } = await supabase.from('profiles').update({ display_name: name }).eq('id', user.id);
+    if (error) throw error;
+    return name;
   }
   const { error } = await supabase.from('profiles').insert({ id: user.id, display_name: name });
   if (error) throw error;
