@@ -52,7 +52,7 @@ async function ensureProfile(user, displayName) {
 async function loadRecipes() {
   elements.feedStatus.textContent = '레시피를 불러오는 중이에요.';
   const { data, error } = await supabase.from('recipes')
-    .select('id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, image_fit, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)')
+    .select('id, author_id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, image_fit, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)')
     .eq('visibility', 'published').order('created_at', { ascending: false });
   if (error) {
     elements.feedStatus.textContent = '레시피 공간을 준비하는 중이에요.';
@@ -180,7 +180,7 @@ async function publishRecipe(event) {
   if (!authorName || !title || !ingredients.length || !steps.length) { elements.recipeMessage.textContent = '닉네임, 메뉴 이름, 재료 1개, 조리 순서 1개는 꼭 필요해요.'; return; }
   const publishButton = $('#publishButton'); publishButton.disabled = true; publishButton.textContent = '업로드 준비 중…';
   try {
-    await ensureGuestSession(); await ensureProfile(state.session.user, authorName);
+    await ensureGuestSession(); await claimCreatorName(state.session.user, authorName);
     let video = null; let image = null;
     if (state.selectedFile) { const path = await uploadFile(state.selectedFile, state.session.user.id, 'recipe-videos', '영상'); video = { path, url: supabase.storage.from('recipe-videos').getPublicUrl(path).data.publicUrl }; }
     if (state.selectedImage) { const path = await uploadFile(state.selectedImage, state.session.user.id, 'recipe-images', '사진'); image = { path, url: supabase.storage.from('recipe-images').getPublicUrl(path).data.publicUrl }; }
@@ -207,3 +207,59 @@ document.addEventListener('click', (event) => { const addButton = event.target.c
 document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && event.target.matches('[data-recipe-id]')) event.target.click(); });
 supabase.auth.onAuthStateChange((_event, session) => { state.session = session; });
 (async function initialize() { const { data: { session } } = await supabase.auth.getSession(); state.session = session; resetRecipeForm(); await loadRecipes(); })();
+(async function creatorIdentityControls() {
+  const profileButton = $('#profileButton');
+  const profileDialog = $('#profileDialog');
+  const profileForm = $('#profileForm');
+  const profileName = $('#profileName');
+  const profileMessage = $('#profileMessage');
+
+  async function refreshCreatorName() {
+    if (!state.session?.user) return null;
+    const { data } = await supabase.from('profiles').select('display_name').eq('id', state.session.user.id).maybeSingle();
+    if (data?.display_name) { profileButton.textContent = data.display_name; profileName.value = data.display_name; return data.display_name; }
+    return null;
+  }
+
+  profileButton.addEventListener('click', async () => { try { await ensureGuestSession(); await refreshCreatorName(); openDialog(profileDialog); } catch (error) { showToast(error.message); } });
+  profileForm.addEventListener('submit', async (event) => {
+    event.preventDefault(); profileMessage.textContent = '';
+    try { await ensureGuestSession(); await claimCreatorName(state.session.user, profileName.value); await refreshCreatorName(); closeDialog(profileDialog); showToast('이름이 연결되었어요.'); }
+    catch (error) { profileMessage.textContent = error.code === '23505' ? '이미 사용 중인 이름이에요. 다른 이름을 정해주세요.' : (error.message || '이름을 저장하지 못했어요.'); }
+  });
+  const { data: { session } } = await supabase.auth.getSession(); state.session = session; await refreshCreatorName();
+})();
+
+async function claimCreatorName(user, displayName) {
+  const name = String(displayName || '').trim().slice(0, 40);
+  if (name.length < 2) throw new Error('이름은 2자 이상 입력해주세요.');
+  const { data: existing, error: lookupError } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (existing?.display_name) {
+    if (existing.display_name !== name) throw new Error(`이 브라우저에는 ${existing.display_name} 이름이 연결되어 있어요.`);
+    return existing.display_name;
+  }
+  const { error } = await supabase.from('profiles').insert({ id: user.id, display_name: name });
+  if (error) throw error;
+  return name;
+}
+
+document.addEventListener('click', (event) => {
+  const card = event.target.closest('[data-recipe-id]');
+  if (!card) return;
+  window.setTimeout(() => {
+    const recipe = state.recipes.find((item) => item.id === card.dataset.recipeId);
+    if (!recipe || recipe.author_id !== state.session?.user?.id || $('#deleteRecipeButton')) return;
+    const target = $('.detail-content');
+    if (!target) return;
+    const button = document.createElement('button');
+    button.id = 'deleteRecipeButton'; button.className = 'text-button delete-recipe'; button.type = 'button'; button.textContent = '이 레시피 삭제';
+    button.addEventListener('click', async () => {
+      if (!window.confirm('이 레시피를 삭제할까요?')) return;
+      const { error } = await supabase.from('recipes').delete().eq('id', recipe.id);
+      if (error) { showToast(error.message || '삭제하지 못했어요.'); return; }
+      closeDialog(elements.detailDialog); await loadRecipes(); showToast('레시피를 삭제했어요.');
+    });
+    target.append(button);
+  }, 0);
+});
