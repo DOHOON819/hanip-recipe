@@ -52,7 +52,7 @@ async function ensureProfile(user, displayName) {
 async function loadRecipes() {
   elements.feedStatus.textContent = '레시피를 불러오는 중이에요.';
   const { data, error } = await supabase.from('recipes')
-    .select('id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)')
+    .select('id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, image_fit, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)')
     .eq('visibility', 'published').order('created_at', { ascending: false });
   if (error) {
     elements.feedStatus.textContent = '레시피 공간을 준비하는 중이에요.';
@@ -77,7 +77,8 @@ function renderRecipes() {
   const recipes = filteredRecipes();
   elements.recipeGrid.innerHTML = recipes.map((recipe) => {
     const author = recipe.profiles?.display_name || '익명 요리사';
-    const media = recipe.video_url ? `<video src="${escapeHtml(recipe.video_url)}" muted playsinline preload="metadata"></video><span class="play-chip" aria-hidden="true">▶</span>` : recipe.image_url ? `<img src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" loading="lazy" />` : '<div class="media-placeholder">한입 레시피</div>';
+    const imageFit = recipe.image_fit === 'contain' ? 'contain' : 'cover';
+    const media = recipe.video_url ? `<video src="${escapeHtml(recipe.video_url)}" muted playsinline preload="metadata"></video><span class="play-chip" aria-hidden="true">▶</span>` : recipe.image_url ? `<img class="photo-${imageFit}" src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" loading="lazy" />` : '<div class="media-placeholder">한입 레시피</div>';
     return `<article class="recipe-card" data-recipe-id="${escapeHtml(recipe.id)}" tabindex="0" aria-label="${escapeHtml(recipe.title)} 상세 보기">
       <div class="video-thumb">${media}<div class="thumb-meta"><span class="badge">${escapeHtml(recipe.category)}</span><span class="badge">${escapeHtml(recipe.cook_minutes)}분</span></div></div>
       <div class="recipe-card-content"><div class="card-byline">${escapeHtml(author)}</div><h3>${escapeHtml(recipe.title)}</h3><p>${escapeHtml(recipe.description || '레시피를 열어 조리 순서를 확인해보세요.')}</p><div class="card-footer"><span>${escapeHtml(recipe.servings)}인분</span><span>·</span><span>${escapeHtml(recipe.difficulty)}</span></div></div>
@@ -90,7 +91,8 @@ function renderRecipes() {
 function renderRecipeDetail(recipe) {
   const ingredients = [...(recipe.recipe_ingredients || [])].sort((a, b) => a.position - b.position);
   const steps = [...(recipe.recipe_steps || [])].sort((a, b) => a.position - b.position);
-  const detailMedia = `${recipe.image_url ? `<img class="detail-image" src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" />` : ''}${recipe.video_url ? `<video class="detail-video" src="${escapeHtml(recipe.video_url)}" controls playsinline preload="metadata">브라우저에서 영상을 재생할 수 없어요.</video>` : ''}`;
+  const imageFit = recipe.image_fit === 'contain' ? 'contain' : 'cover';
+  const detailMedia = `${recipe.image_url ? `<img class="detail-image photo-${imageFit}" src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" />` : ''}${recipe.video_url ? `<video class="detail-video" src="${escapeHtml(recipe.video_url)}" controls playsinline preload="metadata">브라우저에서 영상을 재생할 수 없어요.</video>` : ''}`;
   elements.recipeDetail.innerHTML = `${detailMedia}
     <div class="detail-content"><p class="eyebrow">${escapeHtml(recipe.category)} · ${escapeHtml(recipe.profiles?.display_name || '익명 요리사')}</p><h2 id="detailTitle">${escapeHtml(recipe.title)}</h2><div class="detail-meta"><span>${escapeHtml(recipe.cook_minutes)}분</span><span>${escapeHtml(recipe.servings)}인분</span><span>${escapeHtml(recipe.difficulty)}</span></div><p class="detail-description">${escapeHtml(recipe.description || '')}</p><div class="detail-columns"><section><h3>재료</h3><ul>${ingredients.map((item) => `<li>${escapeHtml(item.item)}${item.quantity ? ` · ${escapeHtml(item.quantity)}` : ''}</li>`).join('') || '<li>등록된 재료가 없어요.</li>'}</ul></section><section><h3>조리 순서</h3><ol>${steps.map((step) => `<li>${escapeHtml(step.instruction)}</li>`).join('') || '<li>등록된 조리 순서가 없어요.</li>'}</ol></section></div></div>`;
   openDialog(elements.detailDialog);
@@ -183,7 +185,7 @@ async function publishRecipe(event) {
     if (state.selectedFile) { const path = await uploadFile(state.selectedFile, state.session.user.id, 'recipe-videos', '영상'); video = { path, url: supabase.storage.from('recipe-videos').getPublicUrl(path).data.publicUrl }; }
     if (state.selectedImage) { const path = await uploadFile(state.selectedImage, state.session.user.id, 'recipe-images', '사진'); image = { path, url: supabase.storage.from('recipe-images').getPublicUrl(path).data.publicUrl }; }
     publishButton.textContent = '레시피 저장 중…';
-    const { data: recipe, error: recipeError } = await supabase.from('recipes').insert({ author_id: state.session.user.id, title, description: $('#recipeDescription').value.trim(), category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, video_path: video?.path || null, video_url: video?.url || null, video_mime: state.selectedFile?.type || null, video_size_bytes: state.selectedFile?.size || null, image_path: image?.path || null, image_url: image?.url || null, image_mime: state.selectedImage?.type || null, image_size_bytes: state.selectedImage?.size || null, visibility: 'published' }).select('id').single();
+    const { data: recipe, error: recipeError } = await supabase.from('recipes').insert({ author_id: state.session.user.id, title, description: $('#recipeDescription').value.trim(), category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, video_path: video?.path || null, video_url: video?.url || null, video_mime: state.selectedFile?.type || null, video_size_bytes: state.selectedFile?.size || null, image_path: image?.path || null, image_url: image?.url || null, image_mime: state.selectedImage?.type || null, image_size_bytes: state.selectedImage?.size || null, image_fit: $('#imageFit').value, visibility: 'published' }).select('id').single();
     if (recipeError) throw recipeError;
     const results = await Promise.all([supabase.from('recipe_ingredients').insert(ingredients.map((item, position) => ({ recipe_id: recipe.id, position, ...item }))), supabase.from('recipe_steps').insert(steps.map((instruction, position) => ({ recipe_id: recipe.id, position, instruction })))]);
     if (results.find((result) => result.error)?.error) throw results.find((result) => result.error).error;
