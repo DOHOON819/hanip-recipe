@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#191511" />
-    <meta name="description" content="실제 요리사들이 짧은 조리 영상과 레시피를 공유하는 한입 레시피 커뮤니티" />
+    <meta name="description" content="직접 찍은 조리 영상과 레시피를 공유하는 한입 레시피 커뮤니티" />
     <title>한입 레시피 | 영상으로 배우는 오늘의 메뉴</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,14 +18,8 @@
     <a class="skip-link" href="#feed">영상 레시피로 건너뛰기</a>
     <header class="site-header">
       <a class="wordmark" href="#top" aria-label="한입 레시피 홈"><span>한입</span> 레시피</a>
-      <nav aria-label="주요 메뉴">
-        <a href="#feed">둘러보기</a>
-        <a href="#how">이용 방법</a>
-      </nav>
-      <div class="header-actions">
-        <button id="authButton" class="text-button" type="button">로그인</button>
-        <button id="openComposer" class="primary-button" type="button"><span aria-hidden="true">＋</span> 레시피 올리기</button>
-      </div>
+      <nav aria-label="주요 메뉴"><a href="#feed">둘러보기</a><a href="#how">이용 방법</a></nav>
+      <div class="header-actions"><button id="openComposer" class="primary-button" type="button"><span aria-hidden="true">＋</span> 레시피 올리기</button></div>
     </header>
 
     <main id="top">
@@ -34,113 +28,38 @@
           <p class="eyebrow">COMMUNITY VIDEO RECIPES</p>
           <h1>누군가의 한 끼가<br /><em>당신의 다음 메뉴가 됩니다.</em></h1>
           <p>직접 찍은 짧은 조리 영상과 정확한 레시피를 올리고, 누구나 따라 만들 수 있게 나눠보세요.</p>
-          <div class="hero-actions">
-            <button class="primary-button large" type="button" data-open-composer><span aria-hidden="true">＋</span> 첫 레시피 올리기</button>
-            <a class="secondary-button large" href="#feed">레시피 보기 <span aria-hidden="true">↓</span></a>
-          </div>
-          <p class="microcopy">가입한 사용자만 영상을 올릴 수 있어요 · MP4, WebM, MOV · 최대 100MB</p>
+          <div class="hero-actions"><button class="primary-button large" type="button" data-open-composer><span aria-hidden="true">＋</span> 첫 레시피 올리기</button><a class="secondary-button large" href="#feed">레시피 보기 <span aria-hidden="true">↓</span></a></div>
+          <p class="microcopy">가입 없이 바로 올리기 · MP4, WebM, MOV · 최대 100MB</p>
         </div>
-        <div class="hero-panel" aria-hidden="true">
-          <div class="hero-panel-top"><span class="record-dot"></span> REAL COOKING CLIPS</div>
-          <div class="hero-bowl">🍲</div>
-          <div class="hero-panel-bottom"><strong>오늘, 무엇을 만드셨나요?</strong><span>영상과 레시피를 함께 남겨요</span></div>
-        </div>
+        <div class="hero-panel" aria-hidden="true"><div class="hero-panel-top"><span class="record-dot"></span> REAL COOKING CLIPS</div><div class="hero-bowl">🍲</div><div class="hero-panel-bottom"><strong>오늘, 무엇을 만드셨나요?</strong><span>영상과 레시피를 함께 남겨요</span></div></div>
       </section>
 
       <section class="trust-strip" aria-label="한입 레시피 원칙">
-        <div><span>01</span><p><strong>실제 제작자</strong>로그인한 사용자의 이름으로 게시돼요.</p></div>
+        <div><span>01</span><p><strong>가입 없이 시작</strong>닉네임 하나로 바로 레시피를 올려요.</p></div>
         <div><span>02</span><p><strong>실제 영상</strong>파일은 안전하게 저장되어 누구나 재생할 수 있어요.</p></div>
         <div><span>03</span><p><strong>따라 하기 쉬운 레시피</strong>재료와 조리 순서를 함께 남겨요.</p></div>
       </section>
 
       <section class="feed-section" id="feed" aria-labelledby="feedTitle">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">LATEST FROM THE KITCHEN</p>
-            <h2 id="feedTitle">새로 올라온 영상 레시피</h2>
-          </div>
-          <div class="feed-controls">
-            <label class="sr-only" for="searchInput">레시피 검색</label>
-            <input id="searchInput" type="search" placeholder="메뉴 또는 재료 검색" autocomplete="off" />
-            <select id="categoryFilter" aria-label="카테고리 필터">
-              <option value="">모든 카테고리</option>
-              <option value="한식">한식</option>
-              <option value="간편식">간편식</option>
-              <option value="면·파스타">면·파스타</option>
-              <option value="디저트">디저트</option>
-              <option value="음료">음료</option>
-              <option value="기타">기타</option>
-            </select>
-          </div>
-        </div>
-        <div id="feedStatus" class="feed-status" role="status" aria-live="polite">레시피를 불러오는 중이에요.</div>
-        <div id="recipeGrid" class="recipe-grid"></div>
-        <div id="emptyState" class="empty-state" hidden>
-          <span aria-hidden="true">◌</span>
-          <h3>아직 공개된 레시피가 없어요.</h3>
-          <p>첫 번째 조리 영상과 레시피를 직접 올려보세요.</p>
-          <button class="primary-button" type="button" data-open-composer>레시피 올리기</button>
-        </div>
+        <div class="section-head"><div><p class="eyebrow">LATEST FROM THE KITCHEN</p><h2 id="feedTitle">새로 올라온 영상 레시피</h2></div><div class="feed-controls"><label class="sr-only" for="searchInput">레시피 검색</label><input id="searchInput" type="search" placeholder="메뉴 또는 재료 검색" autocomplete="off" /><select id="categoryFilter" aria-label="카테고리 필터"><option value="">모든 카테고리</option><option value="한식">한식</option><option value="간편식">간편식</option><option value="면·파스타">면·파스타</option><option value="디저트">디저트</option><option value="음료">음료</option><option value="기타">기타</option></select></div></div>
+        <div id="feedStatus" class="feed-status" role="status" aria-live="polite">레시피를 불러오는 중이에요.</div><div id="recipeGrid" class="recipe-grid"></div>
+        <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">◌</span><h3>아직 공개된 레시피가 없어요.</h3><p>첫 번째 조리 영상과 레시피를 직접 올려보세요.</p><button class="primary-button" type="button" data-open-composer>레시피 올리기</button></div>
       </section>
 
-      <section class="how-section" id="how" aria-labelledby="howTitle">
-        <p class="eyebrow">HOW IT WORKS</p>
-        <h2 id="howTitle">영상 하나로, 레시피 하나로.</h2>
-        <ol>
-          <li><span>1</span><strong>로그인</strong><p>이메일로 내 요리사 계정을 만들어요.</p></li>
-          <li><span>2</span><strong>영상 올리기</strong><p>휴대폰으로 찍은 조리 영상을 바로 업로드해요.</p></li>
-          <li><span>3</span><strong>레시피 완성</strong><p>재료와 순서를 더해 다른 사람이 따라 할 수 있게 해요.</p></li>
-        </ol>
-      </section>
+      <section class="how-section" id="how" aria-labelledby="howTitle"><p class="eyebrow">HOW IT WORKS</p><h2 id="howTitle">영상 하나로, 레시피 하나로.</h2><ol><li><span>1</span><strong>닉네임 입력</strong><p>별도 회원가입 없이 이름만 적어요.</p></li><li><span>2</span><strong>영상 올리기</strong><p>휴대폰으로 찍은 조리 영상을 바로 업로드해요.</p></li><li><span>3</span><strong>레시피 완성</strong><p>재료와 순서를 더해 다른 사람이 따라 할 수 있게 해요.</p></li></ol></section>
     </main>
-
-    <footer>
-      <a class="wordmark" href="#top"><span>한입</span> 레시피</a>
-      <p>실제 요리사와 실제 레시피를 위한 커뮤니티.</p>
-    </footer>
-
-    <dialog id="authDialog" class="dialog auth-dialog" aria-labelledby="authTitle">
-      <div class="dialog-header"><div><p class="eyebrow">YOUR KITCHEN</p><h2 id="authTitle">요리사로 참여하기</h2></div><button class="icon-button" type="button" data-close-dialog="authDialog" aria-label="닫기">×</button></div>
-      <div class="auth-tabs" role="tablist" aria-label="계정 방식"><button class="active" type="button" data-auth-mode="signin" role="tab" aria-selected="true">로그인</button><button type="button" data-auth-mode="signup" role="tab" aria-selected="false">회원가입</button></div>
-      <form id="authForm" novalidate>
-        <div id="displayNameField" class="field" hidden><label for="displayName">표시 이름</label><input id="displayName" maxlength="40" placeholder="예: 소연의 부엌" /></div>
-        <div class="field"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" required placeholder="you@example.com" /></div>
-        <div class="field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" minlength="8" required placeholder="8자 이상" /></div>
-        <p id="authMessage" class="form-message" role="alert" aria-live="polite"></p>
-        <button id="authSubmit" class="primary-button wide" type="submit">로그인</button>
-      </form>
-      <p class="dialog-footnote">계정을 만들면 내 이름으로 레시피와 영상을 게시할 수 있어요.</p>
-    </dialog>
+    <footer><a class="wordmark" href="#top"><span>한입</span> 레시피</a><p>실제 요리사와 실제 레시피를 위한 커뮤니티.</p></footer>
 
     <dialog id="composerDialog" class="dialog composer-dialog" aria-labelledby="composerTitle">
       <div class="dialog-header"><div><p class="eyebrow">NEW VIDEO RECIPE</p><h2 id="composerTitle">내 레시피 올리기</h2></div><button class="icon-button" type="button" data-close-dialog="composerDialog" aria-label="닫기">×</button></div>
       <form id="recipeForm" novalidate>
-        <section class="upload-section">
-          <label class="video-dropzone" for="videoFile">
-            <input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" hidden />
-            <span class="upload-icon" aria-hidden="true">↑</span>
-            <strong id="videoLabel">조리 영상 선택</strong>
-            <small>MP4, WebM, MOV · 최대 100MB · 실제 파일이 업로드됩니다</small>
-          </label>
-          <div id="selectedVideo" class="selected-video" hidden></div>
-          <div id="uploadProgress" class="upload-progress" hidden><div><span>영상 업로드 중</span><strong id="uploadPercent">0%</strong></div><div class="progress-track"><i id="progressBar"></i></div><small id="uploadDetail">안전하게 업로드하고 있어요.</small></div>
-        </section>
-        <div class="form-grid">
-          <div class="field span-2"><label for="recipeTitle">메뉴 이름 <b>*</b></label><input id="recipeTitle" maxlength="80" required placeholder="예: 매콤한 들기름 비빔국수" /></div>
-          <div class="field span-2"><label for="recipeDescription">소개</label><textarea id="recipeDescription" maxlength="600" rows="3" placeholder="어떤 맛인지, 언제 먹기 좋은지 소개해주세요."></textarea></div>
-          <div class="field"><label for="recipeCategory">카테고리</label><select id="recipeCategory"><option>한식</option><option>간편식</option><option>면·파스타</option><option>디저트</option><option>음료</option><option>기타</option></select></div>
-          <div class="field"><label for="cookMinutes">조리 시간 (분)</label><input id="cookMinutes" type="number" min="1" max="600" value="15" required /></div>
-          <div class="field"><label for="servings">인분</label><input id="servings" type="number" min="1" max="50" value="1" required /></div>
-          <div class="field"><label for="difficulty">난이도</label><select id="difficulty"><option>쉬움</option><option>보통</option><option>어려움</option></select></div>
-        </div>
+        <section class="upload-section"><label class="video-dropzone" for="videoFile"><input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" hidden /><span class="upload-icon" aria-hidden="true">↑</span><strong id="videoLabel">조리 영상 선택</strong><small>MP4, WebM, MOV · 최대 100MB · 실제 파일만 업로드됩니다</small></label><div id="selectedVideo" class="selected-video" hidden></div><div id="uploadProgress" class="upload-progress" hidden><div><span>영상 업로드 중</span><strong id="uploadPercent">0%</strong></div><div class="progress-track"><i id="progressBar"></i></div><small id="uploadDetail">안전하게 업로드하고 있어요.</small></div></section>
+        <div class="form-grid"><div class="field span-2"><label for="authorName">닉네임 <b>*</b></label><input id="authorName" maxlength="40" required placeholder="레시피에 표시될 이름" /></div><div class="field span-2"><label for="recipeTitle">메뉴 이름 <b>*</b></label><input id="recipeTitle" maxlength="80" required placeholder="예: 매콤한 들기름 비빔국수" /></div><div class="field span-2"><label for="recipeDescription">소개</label><textarea id="recipeDescription" maxlength="600" rows="3" placeholder="어떤 맛인지, 언제 먹기 좋은지 소개해주세요."></textarea></div><div class="field"><label for="recipeCategory">카테고리</label><select id="recipeCategory"><option>한식</option><option>간편식</option><option>면·파스타</option><option>디저트</option><option>음료</option><option>기타</option></select></div><div class="field"><label for="cookMinutes">조리 시간 (분)</label><input id="cookMinutes" type="number" min="1" max="600" value="15" required /></div><div class="field"><label for="servings">인분</label><input id="servings" type="number" min="1" max="50" value="1" required /></div><div class="field"><label for="difficulty">난이도</label><select id="difficulty"><option>쉬움</option><option>보통</option><option>어려움</option></select></div></div>
         <section class="list-builder" aria-labelledby="ingredientsLabel"><div class="builder-head"><div><h3 id="ingredientsLabel">재료 <b>*</b></h3><p>분량과 재료를 적어주세요.</p></div><button type="button" class="text-button" data-add-row="ingredient">＋ 추가</button></div><div id="ingredients" class="entry-list"></div></section>
         <section class="list-builder" aria-labelledby="stepsLabel"><div class="builder-head"><div><h3 id="stepsLabel">조리 순서 <b>*</b></h3><p>한 줄에 한 단계씩 적어주세요.</p></div><button type="button" class="text-button" data-add-row="step">＋ 추가</button></div><div id="steps" class="entry-list steps"></div></section>
-        <p id="recipeMessage" class="form-message" role="alert" aria-live="polite"></p>
-        <button id="publishButton" class="primary-button wide" type="submit">영상과 레시피 공개하기</button>
+        <p id="recipeMessage" class="form-message" role="alert" aria-live="polite"></p><button id="publishButton" class="primary-button wide" type="submit">영상과 레시피 공개하기</button>
       </form>
     </dialog>
-
-    <dialog id="detailDialog" class="dialog detail-dialog" aria-labelledby="detailTitle"><button class="icon-button detail-close" type="button" data-close-dialog="detailDialog" aria-label="닫기">×</button><div id="recipeDetail"></div></dialog>
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <dialog id="detailDialog" class="dialog detail-dialog" aria-labelledby="detailTitle"><button class="icon-button detail-close" type="button" data-close-dialog="detailDialog" aria-label="닫기">×</button><div id="recipeDetail"></div></dialog><div id="toast" class="toast" role="status" aria-live="polite"></div>
   </body>
 </html>
