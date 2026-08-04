@@ -27,16 +27,16 @@
         <div class="hero-copy">
           <p class="eyebrow">COMMUNITY VIDEO RECIPES</p>
           <h1>누군가의 한 끼가<br /><em>당신의 다음 메뉴가 됩니다.</em></h1>
-          <p>직접 찍은 짧은 조리 영상과 정확한 레시피를 올리고, 누구나 따라 만들 수 있게 나눠보세요.</p>
+          <p>조리 영상이나 대표 사진, 그리고 정확한 레시피를 올리고 누구나 따라 만들 수 있게 나눠보세요.</p>
           <div class="hero-actions"><button class="primary-button large" type="button" data-open-composer><span aria-hidden="true">＋</span> 첫 레시피 올리기</button><a class="secondary-button large" href="#feed">레시피 보기 <span aria-hidden="true">↓</span></a></div>
-          <p class="microcopy">가입 없이 바로 올리기 · MP4, WebM, MOV · 최대 100MB</p>
+          <p class="microcopy">가입 없이 바로 올리기 · 영상과 사진은 모두 선택 · 사진 최대 10MB</p>
         </div>
         <div class="hero-panel" aria-hidden="true"><div class="hero-panel-top"><span class="record-dot"></span> REAL COOKING CLIPS</div><div class="hero-bowl">🍲</div><div class="hero-panel-bottom"><strong>오늘, 무엇을 만드셨나요?</strong><span>영상과 레시피를 함께 남겨요</span></div></div>
       </section>
 
       <section class="trust-strip" aria-label="한입 레시피 원칙">
         <div><span>01</span><p><strong>가입 없이 시작</strong>닉네임 하나로 바로 레시피를 올려요.</p></div>
-        <div><span>02</span><p><strong>실제 영상</strong>파일은 안전하게 저장되어 누구나 재생할 수 있어요.</p></div>
+        <div><span>02</span><p><strong>영상 또는 사진</strong>선택한 파일은 안전하게 저장되어 함께 볼 수 있어요.</p></div>
         <div><span>03</span><p><strong>따라 하기 쉬운 레시피</strong>재료와 조리 순서를 함께 남겨요.</p></div>
       </section>
 
@@ -46,18 +46,18 @@
         <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">◌</span><h3>아직 공개된 레시피가 없어요.</h3><p>첫 번째 조리 영상과 레시피를 직접 올려보세요.</p><button class="primary-button" type="button" data-open-composer>레시피 올리기</button></div>
       </section>
 
-      <section class="how-section" id="how" aria-labelledby="howTitle"><p class="eyebrow">HOW IT WORKS</p><h2 id="howTitle">영상 하나로, 레시피 하나로.</h2><ol><li><span>1</span><strong>닉네임 입력</strong><p>별도 회원가입 없이 이름만 적어요.</p></li><li><span>2</span><strong>영상 올리기</strong><p>휴대폰으로 찍은 조리 영상을 바로 업로드해요.</p></li><li><span>3</span><strong>레시피 완성</strong><p>재료와 순서를 더해 다른 사람이 따라 할 수 있게 해요.</p></li></ol></section>
+      <section class="how-section" id="how" aria-labelledby="howTitle"><p class="eyebrow">HOW IT WORKS</p><h2 id="howTitle">사진 하나로, 레시피 하나로.</h2><ol><li><span>1</span><strong>닉네임 입력</strong><p>별도 회원가입 없이 이름만 적어요.</p></li><li><span>2</span><strong>미디어 선택</strong><p>영상이나 사진을 원할 때만 올려요.</p></li><li><span>3</span><strong>레시피 완성</strong><p>재료와 순서를 더해 다른 사람이 따라 할 수 있게 해요.</p></li></ol></section>
     </main>
     <footer><a class="wordmark" href="#top"><span>한입</span> 레시피</a><p>실제 요리사와 실제 레시피를 위한 커뮤니티.</p></footer>
 
     <dialog id="composerDialog" class="dialog composer-dialog" aria-labelledby="composerTitle">
       <div class="dialog-header"><div><p class="eyebrow">NEW VIDEO RECIPE</p><h2 id="composerTitle">내 레시피 올리기</h2></div><button class="icon-button" type="button" data-close-dialog="composerDialog" aria-label="닫기">×</button></div>
       <form id="recipeForm" novalidate>
-        <section class="upload-section"><label class="video-dropzone" for="videoFile"><input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" hidden /><span class="upload-icon" aria-hidden="true">↑</span><strong id="videoLabel">조리 영상 선택</strong><small>MP4, WebM, MOV · 최대 100MB · 실제 파일만 업로드됩니다</small></label><div id="selectedVideo" class="selected-video" hidden></div><div id="uploadProgress" class="upload-progress" hidden><div><span>영상 업로드 중</span><strong id="uploadPercent">0%</strong></div><div class="progress-track"><i id="progressBar"></i></div><small id="uploadDetail">안전하게 업로드하고 있어요.</small></div></section>
+        <section class="upload-section"><div class="media-upload-grid"><label class="video-dropzone" for="videoFile"><input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" hidden /><span class="upload-icon" aria-hidden="true">▶</span><strong id="videoLabel">조리 영상 선택</strong><small>선택 · MP4, WebM, MOV · 최대 100MB</small></label><label class="video-dropzone" for="imageFile"><input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /><span class="upload-icon" aria-hidden="true">▧</span><strong id="imageLabel">대표 사진 선택</strong><small>선택 · JPG, PNG, WebP · 최대 10MB</small></label></div><div id="selectedVideo" class="selected-video" hidden></div><div id="selectedImage" class="selected-video" hidden></div><div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadProgressLabel">파일 업로드 중</span><strong id="uploadPercent">0%</strong></div><div class="progress-track"><i id="progressBar"></i></div><small id="uploadDetail">안전하게 업로드하고 있어요.</small></div></section>
         <div class="form-grid"><div class="field span-2"><label for="authorName">닉네임 <b>*</b></label><input id="authorName" maxlength="40" required placeholder="레시피에 표시될 이름" /></div><div class="field span-2"><label for="recipeTitle">메뉴 이름 <b>*</b></label><input id="recipeTitle" maxlength="80" required placeholder="예: 매콤한 들기름 비빔국수" /></div><div class="field span-2"><label for="recipeDescription">소개</label><textarea id="recipeDescription" maxlength="600" rows="3" placeholder="어떤 맛인지, 언제 먹기 좋은지 소개해주세요."></textarea></div><div class="field"><label for="recipeCategory">카테고리</label><select id="recipeCategory"><option>한식</option><option>간편식</option><option>면·파스타</option><option>디저트</option><option>음료</option><option>기타</option></select></div><div class="field"><label for="cookMinutes">조리 시간 (분)</label><input id="cookMinutes" type="number" min="1" max="600" value="15" required /></div><div class="field"><label for="servings">인분</label><input id="servings" type="number" min="1" max="50" value="1" required /></div><div class="field"><label for="difficulty">난이도</label><select id="difficulty"><option>쉬움</option><option>보통</option><option>어려움</option></select></div></div>
         <section class="list-builder" aria-labelledby="ingredientsLabel"><div class="builder-head"><div><h3 id="ingredientsLabel">재료 <b>*</b></h3><p>분량과 재료를 적어주세요.</p></div><button type="button" class="text-button" data-add-row="ingredient">＋ 추가</button></div><div id="ingredients" class="entry-list"></div></section>
         <section class="list-builder" aria-labelledby="stepsLabel"><div class="builder-head"><div><h3 id="stepsLabel">조리 순서 <b>*</b></h3><p>한 줄에 한 단계씩 적어주세요.</p></div><button type="button" class="text-button" data-add-row="step">＋ 추가</button></div><div id="steps" class="entry-list steps"></div></section>
-        <p id="recipeMessage" class="form-message" role="alert" aria-live="polite"></p><button id="publishButton" class="primary-button wide" type="submit">영상과 레시피 공개하기</button>
+        <p id="recipeMessage" class="form-message" role="alert" aria-live="polite"></p><button id="publishButton" class="primary-button wide" type="submit">레시피 공개하기</button>
       </form>
     </dialog>
     <dialog id="detailDialog" class="dialog detail-dialog" aria-labelledby="detailTitle"><button class="icon-button detail-close" type="button" data-close-dialog="detailDialog" aria-label="닫기">×</button><div id="recipeDetail"></div></dialog><div id="toast" class="toast" role="status" aria-live="polite"></div>
