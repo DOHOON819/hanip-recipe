@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#231b18" />
+    <meta
+      name="description"
+      content="메뉴, 레시피, 짧은 영상으로 오늘의 한입을 쉽게 공유하는 한입메뉴"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="한입메뉴 | 메뉴·레시피·숏폼 영상 스튜디오" />
+    <meta property="og:description" content="메뉴를 고르고, 레시피와 짧은 조리 영상으로 바로 공유하세요." />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="한입메뉴 | 메뉴·레시피·숏폼 영상 스튜디오" />
+    <meta name="twitter:description" content="메뉴를 고르고, 레시피와 짧은 조리 영상으로 바로 공유하세요." />
+    <meta name="twitter:image" content="/og.png" />
+    <title>한입메뉴 | 메뉴·레시피·숏폼 영상 스튜디오</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#discover">메뉴 탐색으로 건너뛰기</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#home" aria-label="한입메뉴 홈">
+          <span class="brand-mark" aria-hidden="true">한입</span><span>메뉴</span>
+        </a>
+        <nav class="desktop-nav" aria-label="주요 메뉴">
+          <a class="is-current" href="#discover">둘러보기</a>
+          <a href="#how-it-works">이용 방법</a>
+          <button class="nav-create" type="button" data-open-composer>메뉴 올리기 <span aria-hidden="true">↗</span></button>
+        </nav>
+        <button class="mobile-create" type="button" data-open-composer aria-label="새 메뉴 올리기">＋</button>
+      </div>
+    </header>
+
+    <main id="home">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span aria-hidden="true">●</span> 오늘의 식탁을 더 쉽게</p>
+          <h1 id="hero-title">메뉴를 한입에,<br /><em>레시피를 영상으로.</em></h1>
+          <p class="hero-description">
+            오늘 먹고 싶은 메뉴를 찾고, 따라 하기 쉬운 레시피와 짧은 조리 영상까지 한 곳에서 만나보세요.
+          </p>
+          <form class="hero-search" role="search" onsubmit="return false;">
+            <label class="sr-only" for="menuSearch">메뉴 또는 재료 검색</label>
+            <span aria-hidden="true">⌕</span>
+            <input id="menuSearch" type="search" placeholder="예: 들기름, 15분, 비빔면" autocomplete="off" />
+            <button id="clearSearch" type="button" hidden aria-label="검색어 지우기">×</button>
+          </form>
+          <div class="quick-searches" aria-label="인기 검색어">
+            <span>지금 많이 찾는 메뉴</span>
+            <button type="button" data-quick-search="15분 요리">15분 요리</button>
+            <button type="button" data-quick-search="집들이">집들이</button>
+            <button type="button" data-quick-search="다이어트">다이어트</button>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="참기름 버터 간장 우동 조리 영상 예시">
+          <div class="orbit orbit-one" aria-hidden="true"></div>
+          <div class="orbit orbit-two" aria-hidden="true"></div>
+          <div class="video-window">
+            <div class="video-topline">
+              <span class="live-pill"><i></i> 00:27</span>
+              <span>주방에서 바로</span>
+            </div>
+            <div class="dish-emoji hero-dish" aria-hidden="true">🍜</div>
+            <div class="play-button" aria-hidden="true">▶</div>
+            <div class="video-caption">
+              <span>15분 완성</span>
+              <strong>참기름 버터 간장 우동</strong>
+            </div>
+          </div>
+          <div class="floating-note note-time"><span aria-hidden="true">◷</span> 조리 12분</div>
+          <div class="floating-note note-save"><span aria-hidden="true">♡</span> 2,482명이 저장</div>
+        </div>
+      </section>
+
+      <section class="value-strip" aria-label="한입메뉴 소개">
+        <div><span class="value-icon" aria-hidden="true">▣</span><strong>오늘의 메뉴</strong><small>한눈에 고르는 취향별 메뉴판</small></div>
+        <div><span class="value-icon" aria-hidden="true">≋</span><strong>짧은 조리 영상</strong><small>핵심만 담은 세로형 레시피</small></div>
+        <div><span class="value-icon" aria-hidden="true">＋</span><strong>내 레시피</strong><small>재료부터 순서까지 간편하게 공유</small></div>
+      </section>
+
+      <section class="discover-section" id="discover" aria-labelledby="discover-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">DISCOVER TODAY</p>
+            <h2 id="discover-title">지금, 무엇을 먹을까요?</h2>
+          </div>
+          <p id="resultCount" class="result-count" aria-live="polite"></p>
+        </div>
+
+        <div class="filter-row">
+          <div class="category-chips" role="group" aria-label="메뉴 카테고리 필터">
+            <button class="category-chip is-active" type="button" data-category="전체" aria-pressed="true">전체</button>
+            <button class="category-chip" type="button" data-category="한그릇" aria-pressed="false">한그릇</button>
+            <button class="category-chip" type="button" data-category="반찬" aria-pressed="false">반찬</button>
+            <button class="category-chip" type="button" data-category="면·파스타" aria-pressed="false">면·파스타</button>
+            <button class="category-chip" type="button" data-category="디저트" aria-pressed="false">디저트</button>
+            <button class="category-chip" type="button" data-category="음료" aria-pressed="false">음료</button>
+          </div>
+          <button id="openComposerInline" class="subtle-create" type="button" data-open-composer><span aria-hidden="true">＋</span> 내 메뉴 올리기</button>
+        </div>
+
+        <div id="dishGrid" class="dish-grid" aria-live="polite"></div>
+        <div id="emptyState" class="empty-state" hidden>
+          <span aria-hidden="true">🥢</span>
+          <h3>아직 딱 맞는 메뉴를 찾지 못했어요.</h3>
+          <p>검색어를 조금 바꾸거나, 오늘의 메뉴를 직접 올려보세요.</p>
+          <button type="button" class="primary-button" data-open-composer>첫 메뉴 올리기</button>
+        </div>
+      </section>
+
+      <section class="create-banner" id="make" aria-labelledby="make-title">
+        <div>
+          <p class="eyebrow">MAKE IT YOURS</p>
+          <h2 id="make-title">맛있는 순간을<br />나만의 메뉴로 남겨보세요.</h2>
+          <p>메뉴 이름, 재료, 순서만 적으면 됩니다. 조리 영상을 더하면 더욱 생생해져요.</p>
+          <button class="primary-button" type="button" data-open-composer>메뉴 만들기 <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="banner-ingredients" aria-hidden="true">
+          <span class="ingredient-chip chip-a">🍅 토마토</span>
+          <span class="ingredient-chip chip-b">🧈 버터</span>
+          <span class="ingredient-chip chip-c">🌿 바질</span>
+          <div class="plate-shape"><span>🍝</span></div>
+        </div>
+      </section>
+
+      <section class="how-section" id="how-it-works" aria-labelledby="how-title">
+        <p class="eyebrow">HOW IT WORKS</p>
+        <h2 id="how-title">생각난 레시피를, 바로 한입메뉴에.</h2>
+        <ol class="how-list">
+          <li><span>01</span><strong>메뉴를 적어요</strong><p>이름과 어떤 날에 잘 어울리는지 짧게 소개해요.</p></li>
+          <li><span>02</span><strong>순서를 담아요</strong><p>재료와 조리 순서를 차례대로 더해요.</p></li>
+          <li><span>03</span><strong>맛을 나눠요</strong><p>짧은 영상과 함께 다른 사람의 식탁에 닿아요.</p></li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand brand-footer" href="#home"><span class="brand-mark" aria-hidden="true">한입</span><span>메뉴</span></a>
+      <p>오늘의 메뉴가 내일의 한입이 되도록.</p>
+      <small>© 2026 HANIP MENU. Made for everyday cooking.</small>
+    </footer>
+
+    <nav class="mobile-bottom-nav" aria-label="모바일 주요 메뉴">
+      <a class="mobile-nav-item is-current" href="#home"><span aria-hidden="true">⌂</span><span>홈</span></a>
+      <a class="mobile-nav-item" href="#discover"><span aria-hidden="true">⌕</span><span>찾기</span></a>
+      <button class="mobile-add" type="button" data-open-composer aria-label="메뉴 올리기"><span aria-hidden="true">＋</span></button>
+      <a class="mobile-nav-item" href="#make"><span aria-hidden="true">♡</span><span>저장</span></a>
+      <a class="mobile-nav-item" href="#how-it-works"><span aria-hidden="true">◌</span><span>소개</span></a>
+    </nav>
+
+    <dialog id="composerDialog" class="composer-dialog" aria-labelledby="composerTitle">
+      <form id="composerForm" novalidate>
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">NEW MENU</p>
+            <h2 id="composerTitle">나만의 메뉴 올리기</h2>
+          </div>
+          <button id="closeComposer" class="icon-button" type="button" aria-label="메뉴 작성 닫기">×</button>
+        </header>
+
+        <ol class="composer-progress" aria-label="메뉴 작성 단계">
+          <li class="is-current"><button type="button" data-go-step="1"><span>1</span>기본 정보</button></li>
+          <li><button type="button" data-go-step="2"><span>2</span>사진·영상</button></li>
+          <li><button type="button" data-go-step="3"><span>3</span>레시피</button></li>
+          <li><button type="button" data-go-step="4"><span>4</span>확인</button></li>
+        </ol>
+
+        <div id="composerNotice" class="form-notice" role="alert" hidden></div>
+
+        <section class="composer-panel is-active" data-step="1" aria-labelledby="basicsHeading">
+          <div class="panel-intro">
+            <p class="step-kicker">STEP 1</p>
+            <h3 id="basicsHeading">먼저 메뉴를 소개해주세요.</h3>
+            <p>어떤 맛인지, 언제 먹기 좋은지 알려주면 사람들이 더 쉽게 찾을 수 있어요.</p>
+          </div>
+          <div class="form-grid">
+            <div class="field field-full">
+              <label for="menuTitle">메뉴 이름 <b aria-hidden="true">*</b></label>
+              <input id="menuTitle" name="menuTitle" maxlength="44" placeholder="예: 들기름 메밀면과 반숙란" aria-describedby="titleHelp" />
+              <small id="titleHelp">먹고 싶은 장면이 떠오르는 이름이면 좋아요.</small>
+            </div>
+            <div class="field">
+              <label for="menuCategory">카테고리</label>
+              <select id="menuCategory" name="menuCategory">
+                <option>한그릇</option>
+                <option>반찬</option>
+                <option>면·파스타</option>
+                <option>디저트</option>
+                <option>음료</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="menuDuration">예상 조리 시간</label>
+              <select id="menuDuration" name="menuDuration">
+                <option>10분 이내</option>
+                <option selected>15분</option>
+                <option>20분</option>
+                <option>30분 이상</option>
+              </select>
+            </div>
+            <div class="field field-full">
+              <label for="menuDescription">한 줄 소개</label>
+              <textarea id="menuDescription" name="menuDescription" rows="3" maxlength="160" placeholder="예: 고소한 들기름 향에 김가루를 듬뿍 올린, 늦은 저녁에도 부담 없는 면 요리"></textarea>
+              <small>선택 사항 · 최대 160자</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="composer-panel" data-step="2" aria-labelledby="mediaHeading" hidden>
+          <div class="panel-intro">
+            <p class="step-kicker">STEP 2</p>
+            <h3 id="mediaHeading">한입 하고 싶은 장면을 더해요.</h3>
+            <p>사진 한 장 또는 60초 이내의 세로 영상을 올려보세요. 이 단계는 건너뛸 수 있어요.</p>
+          </div>
+          <div class="media-upload-wrap">
+            <input id="mediaInput" class="sr-only" type="file" accept="image/*,video/*" />
+            <label class="media-dropzone" for="mediaInput">
+              <span class="upload-symbol" aria-hidden="true">↑</span>
+              <strong>사진 또는 영상 선택</strong>
+              <small>JPG, PNG, HEIC, MP4, MOV</small>
+            </label>
+            <p class="privacy-note">선택한 파일은 이 기기에서 미리보기만 제공되며, 공개 전에는 저장되지 않아요.</p>
+            <figure id="mediaPreview" class="media-preview" hidden></figure>
+          </div>
+        </section>
+
+        <section class="composer-panel" data-step="3" aria-labelledby="recipeHeading" hidden>
+          <div class="panel-intro">
+            <p class="step-kicker">STEP 3</p>
+            <h3 id="recipeHeading">따라 하기 쉬운 레시피를 적어요.</h3>
+            <p>재료와 조리 순서를 한 줄씩 입력해보세요. 화살표 버튼으로 순서를 바꿀 수 있어요.</p>
+          </div>
+          <div class="recipe-builder">
+            <section class="builder-section" aria-labelledby="ingredientsHeading">
+              <div class="builder-heading">
+                <div><h4 id="ingredientsHeading">재료 <b aria-hidden="true">*</b></h4><p>분량까지 함께 쓰면 더 좋아요.</p></div>
+                <button class="text-button" type="button" data-add-row="ingredients"><span aria-hidden="true">＋</span> 재료 추가</button>
+              </div>
+              <div id="ingredientsList" class="dynamic-list" data-kind="ingredients"></div>
+            </section>
+            <section class="builder-section" aria-labelledby="stepsHeading">
+              <div class="builder-heading">
+                <div><h4 id="stepsHeading">조리 순서 <b aria-hidden="true">*</b></h4><p>한 단계에 한 동작씩 적어주세요.</p></div>
+                <button class="text-button" type="button" data-add-row="steps"><span aria-hidden="true">＋</span> 단계 추가</button>
+              </div>
+              <div id="stepsList" class="dynamic-list step-list" data-kind="steps"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="composer-panel" data-step="4" aria-labelledby="reviewHeading" hidden>
+          <div class="panel-intro">
+            <p class="step-kicker">STEP 4</p>
+            <h3 id="reviewHeading">이제 식탁에 내놓을 준비가 되었어요.</h3>
+            <p>공개하면 한입메뉴의 메뉴판에서 바로 확인할 수 있어요.</p>
+          </div>
+          <div id="publishSummary" class="publish-summary" aria-live="polite"></div>
+          <div class="review-tip"><span aria-hidden="true">✦</span><p><strong>공개 전 확인</strong>메뉴 이름, 재료 1개 이상, 조리 순서 1개 이상은 꼭 입력해주세요.</p></div>
+        </section>
+
+        <footer class="composer-footer">
+          <button id="saveDraft" type="button" class="draft-button"><span aria-hidden="true">⌑</span> 임시 저장</button>
+          <div class="footer-actions">
+            <button id="previousStep" type="button" class="secondary-button" hidden>이전</button>
+            <button id="nextStep" type="button" class="primary-button">다음 <span aria-hidden="true">→</span></button>
+            <button id="publishMenu" type="button" class="primary-button" hidden>메뉴 공개하기 <span aria-hidden="true">↗</span></button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="recipeDialog" class="recipe-dialog" aria-labelledby="recipeDialogTitle">
+      <header class="recipe-dialog-header">
+        <p class="eyebrow">RECIPE DETAIL</p>
+        <button id="closeRecipe" class="icon-button" type="button" aria-label="레시피 닫기">×</button>
+      </header>
+      <div id="recipeDialogBody"></div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
