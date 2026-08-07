@@ -78,9 +78,10 @@ function renderRecipes() {
   elements.recipeGrid.innerHTML = recipes.map((recipe) => {
     const author = recipe.profiles?.display_name || '익명 요리사';
     const imageFit = recipe.image_fit === 'contain' ? 'contain' : 'cover';
-    const media = recipe.video_url ? `<video src="${escapeHtml(recipe.video_url)}" muted playsinline preload="metadata"></video><span class="play-chip" aria-hidden="true">▶</span>` : recipe.image_url ? `<img class="photo-${imageFit}" src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" loading="lazy" />` : '<div class="media-placeholder">한입 레시피</div>';
-    return `<article class="recipe-card" data-recipe-id="${escapeHtml(recipe.id)}" tabindex="0" aria-label="${escapeHtml(recipe.title)} 상세 보기">
-      <div class="video-thumb">${media}<div class="thumb-meta"><span class="badge">${escapeHtml(recipe.category)}</span><span class="badge">${escapeHtml(recipe.cook_minutes)}분</span></div></div>
+    const mediaKind = recipe.video_url ? 'video' : recipe.image_url ? 'image' : 'recipe';
+    const media = recipe.video_url ? `<video src="${escapeHtml(recipe.video_url)}" muted playsinline preload="metadata"></video><span class="play-chip" aria-hidden="true">▶</span><i class="shorts-progress" aria-hidden="true"></i>` : recipe.image_url ? `<img class="photo-${imageFit}" src="${escapeHtml(recipe.image_url)}" alt="${escapeHtml(recipe.title)}" loading="lazy" />` : '<div class="media-placeholder">한입 레시피</div>';
+    return `<article class="recipe-card is-${mediaKind}" data-recipe-id="${escapeHtml(recipe.id)}" tabindex="0" aria-label="${escapeHtml(recipe.title)} 상세 보기">
+      <div class="video-thumb">${media}<div class="thumb-meta"><span class="badge media-kind-badge">${mediaKind === 'video' ? '영상' : mediaKind === 'image' ? '사진' : '레시피'}</span><span class="badge">${escapeHtml(recipe.cook_minutes)}분</span></div></div>
       <div class="recipe-card-content"><div class="card-byline">${escapeHtml(author)}</div><h3>${escapeHtml(recipe.title)}</h3><p>${escapeHtml(recipe.description || '레시피를 열어 조리 순서를 확인해보세요.')}</p><div class="card-footer"><span>${escapeHtml(recipe.servings)}인분</span><span>·</span><span>${escapeHtml(recipe.difficulty)}</span></div></div>
     </article>`;
   }).join('');
@@ -113,6 +114,9 @@ function refreshStepNumbers() { $$('#steps .row-number').forEach((element, index
 
 function resetRecipeForm() {
   elements.recipeForm.reset();
+  $('.upload-section')?.classList.remove('show-image-picker');
+  $$('.media-type-switch button').forEach((button, index) => { const active = index === 0; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
+  $('#mediaTypeNote').textContent = '짧은 조리 과정을 영상으로 공유해요.';
   $('#ingredients').innerHTML = '';
   $('#steps').innerHTML = '';
   addRow('ingredient'); addRow('step');
@@ -202,6 +206,12 @@ $$('[data-close-dialog]').forEach((button) => button.addEventListener('click', (
 elements.recipeForm.addEventListener('submit', publishRecipe);
 elements.videoFile.addEventListener('change', () => handleVideoSelect(elements.videoFile.files?.[0]));
 elements.imageFile.addEventListener('change', () => handleImageSelect(elements.imageFile.files?.[0]));
+$$('[data-media-mode]').forEach((button) => button.addEventListener('click', () => {
+  const mode = button.dataset.mediaMode;
+  $$('.media-type-switch button').forEach((item) => { const active = item === button; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); });
+  $('.upload-section')?.classList.toggle('show-image-picker', mode === 'image');
+  $('#mediaTypeNote').textContent = mode === 'video' ? '짧은 조리 과정을 영상으로 공유해요.' : '완성된 메뉴 사진을 한 장 올려주세요.';
+}));
 elements.search.addEventListener('input', renderRecipes); elements.category.addEventListener('change', renderRecipes);
 document.addEventListener('click', (event) => { const addButton = event.target.closest('[data-add-row]'); if (addButton) addRow(addButton.dataset.addRow); const removeButton = event.target.closest('.remove-row'); if (removeButton) { removeButton.closest('.entry-row').remove(); refreshStepNumbers(); } const card = event.target.closest('[data-recipe-id]'); if (card) { const recipe = state.recipes.find((item) => item.id === card.dataset.recipeId); if (recipe) renderRecipeDetail(recipe); } });
 document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && event.target.matches('[data-recipe-id]')) event.target.click(); });
