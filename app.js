@@ -205,6 +205,7 @@ elements.imageFile.addEventListener('change', () => handleImageSelect(elements.i
 elements.search.addEventListener('input', renderRecipes); elements.category.addEventListener('change', renderRecipes);
 document.addEventListener('click', (event) => { const addButton = event.target.closest('[data-add-row]'); if (addButton) addRow(addButton.dataset.addRow); const removeButton = event.target.closest('.remove-row'); if (removeButton) { removeButton.closest('.entry-row').remove(); refreshStepNumbers(); } const card = event.target.closest('[data-recipe-id]'); if (card) { const recipe = state.recipes.find((item) => item.id === card.dataset.recipeId); if (recipe) renderRecipeDetail(recipe); } });
 document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && event.target.matches('[data-recipe-id]')) event.target.click(); });
+$('#tabProfileButton')?.addEventListener('click', () => $('#profileButton')?.click());
 supabase.auth.onAuthStateChange((_event, session) => { state.session = session; });
 (async function initialize() { const { data: { session } } = await supabase.auth.getSession(); state.session = session; resetRecipeForm(); await loadRecipes(); })();
 (async function creatorIdentityControls() {
