@@ -3,7 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const config = window.HANIP_CONFIG;
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
-const state = { session: null, recipes: [], selectedFile: null, selectedImage: null, toastTimer: null };
+const state = { session: null, recipes: [], selectedFile: null, selectedImage: null, mediaFilter: 'all', toastTimer: null };
 
 if (!config?.supabaseUrl || !config?.supabasePublishableKey) throw new Error('Supabase connection is not configured.');
 
@@ -69,7 +69,8 @@ function filteredRecipes() {
   const category = elements.category.value;
   return state.recipes.filter((recipe) => {
     const contents = [recipe.title, recipe.description, recipe.category, ...(recipe.recipe_ingredients || []).map((item) => item.item)].join(' ').toLowerCase();
-    return (!term || contents.includes(term)) && (!category || recipe.category === category);
+    const matchesMedia = state.mediaFilter === 'all' || (state.mediaFilter === 'video' && Boolean(recipe.video_url)) || (state.mediaFilter === 'image' && Boolean(recipe.image_url) && !recipe.video_url);
+    return matchesMedia && (!term || contents.includes(term)) && (!category || recipe.category === category);
   });
 }
 
@@ -85,8 +86,13 @@ function renderRecipes() {
       <div class="recipe-card-content"><div class="card-byline">${escapeHtml(author)}</div><h3>${escapeHtml(recipe.title)}</h3><p>${escapeHtml(recipe.description || '레시피를 열어 조리 순서를 확인해보세요.')}</p><div class="card-footer"><span>${escapeHtml(recipe.servings)}인분</span><span>·</span><span>${escapeHtml(recipe.difficulty)}</span></div></div>
     </article>`;
   }).join('');
+  const mediaLabel = state.mediaFilter === 'video' ? '영상' : state.mediaFilter === 'image' ? '사진' : '레시피';
   elements.emptyState.hidden = recipes.length !== 0;
-  elements.feedStatus.textContent = state.recipes.length ? `${recipes.length}개의 실제 영상 레시피` : '아직 공개된 레시피가 없어요.';
+  elements.feedStatus.textContent = state.recipes.length ? `${recipes.length}개의 ${mediaLabel}` : '아직 공개된 레시피가 없어요.';
+  if (!recipes.length) {
+    $('#emptyState h3').textContent = state.mediaFilter === 'video' ? '아직 올라온 영상이 없어요.' : state.mediaFilter === 'image' ? '아직 올라온 사진이 없어요.' : '아직 공개된 레시피가 없어요.';
+    $('#emptyState p').textContent = '첫 번째 메뉴와 레시피를 직접 올려보세요.';
+  }
 }
 
 function renderRecipeDetail(recipe) {
@@ -213,6 +219,11 @@ $$('[data-media-mode]').forEach((button) => button.addEventListener('click', () 
   $('#mediaTypeNote').textContent = mode === 'video' ? '짧은 조리 과정을 영상으로 공유해요.' : '완성된 메뉴 사진을 한 장 올려주세요.';
 }));
 elements.search.addEventListener('input', renderRecipes); elements.category.addEventListener('change', renderRecipes);
+$$('[data-media-filter]').forEach((button) => button.addEventListener('click', () => {
+  state.mediaFilter = button.dataset.mediaFilter;
+  $$('[data-media-filter]').forEach((item) => { const active = item === button; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); });
+  renderRecipes();
+}));
 document.addEventListener('click', (event) => { const addButton = event.target.closest('[data-add-row]'); if (addButton) addRow(addButton.dataset.addRow); const removeButton = event.target.closest('.remove-row'); if (removeButton) { removeButton.closest('.entry-row').remove(); refreshStepNumbers(); } const card = event.target.closest('[data-recipe-id]'); if (card) { const recipe = state.recipes.find((item) => item.id === card.dataset.recipeId); if (recipe) renderRecipeDetail(recipe); } });
 document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && event.target.matches('[data-recipe-id]')) event.target.click(); });
 $('#tabProfileButton')?.addEventListener('click', () => $('#profileButton')?.click());

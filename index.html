@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Gowun+Dodum&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260807-instagram" />
+    <link rel="stylesheet" href="styles.css?v=20260807-feed-tabs" />
     <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
     <script src="config.js" defer></script>
-    <script type="module" src="app.js?v=20260807-instagram"></script>
+    <script type="module" src="app.js?v=20260807-feed-tabs"></script>
   </head>
   <body>
     <a class="skip-link" href="#feed">영상 레시피로 건너뛰기</a>
@@ -41,7 +41,8 @@
       </section>
 
       <section class="feed-section" id="feed" aria-labelledby="feedTitle">
-        <div class="section-head"><div><p class="eyebrow">LATEST FROM THE KITCHEN</p><h2 id="feedTitle">새로 올라온 영상 레시피</h2></div><div class="feed-controls"><label class="sr-only" for="searchInput">레시피 검색</label><input id="searchInput" type="search" placeholder="메뉴 또는 재료 검색" autocomplete="off" /><select id="categoryFilter" aria-label="카테고리 필터"><option value="">모든 카테고리</option><option value="한식">한식</option><option value="간편식">간편식</option><option value="면·파스타">면·파스타</option><option value="디저트">디저트</option><option value="음료">음료</option><option value="기타">기타</option></select></div></div>
+        <div class="section-head"><div><p class="eyebrow">DISCOVER</p><h2 id="feedTitle">둘러보기</h2></div><div class="feed-controls"><label class="sr-only" for="searchInput">레시피 검색</label><input id="searchInput" type="search" placeholder="메뉴 또는 재료 검색" autocomplete="off" /><select id="categoryFilter" aria-label="카테고리 필터"><option value="">모든 카테고리</option><option value="한식">한식</option><option value="간편식">간편식</option><option value="면·파스타">면·파스타</option><option value="디저트">디저트</option><option value="음료">음료</option><option value="기타">기타</option></select></div></div>
+        <div class="media-feed-tabs" role="tablist" aria-label="미디어 필터"><button class="active" type="button" data-media-filter="all" role="tab" aria-selected="true">전체</button><button type="button" data-media-filter="video" role="tab" aria-selected="false"><span aria-hidden="true">▶</span> 영상</button><button type="button" data-media-filter="image" role="tab" aria-selected="false"><span aria-hidden="true">▧</span> 사진</button></div>
         <div id="feedStatus" class="feed-status" role="status" aria-live="polite">레시피를 불러오는 중이에요.</div><div id="recipeGrid" class="recipe-grid"></div>
         <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">◌</span><h3>아직 공개된 레시피가 없어요.</h3><p>첫 번째 조리 영상과 레시피를 직접 올려보세요.</p><button class="primary-button" type="button" data-open-composer>레시피 올리기</button></div>
       </section>
