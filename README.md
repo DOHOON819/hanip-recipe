@@ -1,33 +1,56 @@
-# 한입 레시피
+# Recipe Book
 
-실제 사용자 계정으로 짧은 조리 영상을 올리고, 재료·조리 순서와 함께 공유하는 Supabase 기반 웹앱입니다.
+An English-first, mobile-friendly recipe-sharing app. Warm ivory, forest-green details and an original food photograph give it a modern cookbook identity without filling the community feed with invented posts.
 
-## 실제로 동작하는 기능
+## Experience
 
-- 회원가입 없이 닉네임만 입력하는 익명 업로드
-- 선택형 조리 영상(MP4/WebM/MOV, 100MB)과 대표 사진(JPG/PNG/WebP, 10MB) 업로드
-- 사용자별 프로필 생성 및 작성자 표시
-- MP4, WebM, MOV 조리 영상의 브라우저 직접 업로드 (최대 100MB)
-- 대용량 영상의 재개 가능한 업로드와 진행률 표시
-- 공개 레시피 피드, 검색, 카테고리 필터, 영상 재생, 재료·조리 순서 상세 보기
-- Supabase Row Level Security로 본인 레시피와 본인 폴더의 영상만 작성·수정·삭제
+- Discover all recipes, videos, photos or your saved collection.
+- Combine ingredient/title search with category, cooking-time and difficulty filters; sort by newest or quickest.
+- Explore quick meals, noodles & pasta, desserts, or a random matching recipe.
+- Save favorites **on the current browser/device**. Bookmarks do not sync between devices.
+- Read ingredients and instructions as a cooking checklist.
+- Share through three short steps: basics, recipe, then an optional photo or video.
+- Upload JPG/PNG/WebP photos up to 10 MB, or MP4/WebM/MOV videos up to 100 MB. Playback depends on the browser's codec support.
+- Choose full-bleed or uncropped photo framing.
+- Claim or rename a unique creator name without a visible sign-up/login flow.
 
-## Supabase 구성
+## Identity and data
 
-`supabase/schema.sql`을 Supabase SQL Editor에서 실행하면 다음이 생성됩니다.
+Supabase anonymous authentication identifies the owner of a recipe. A creator name is **not** a password, recovery method or transferable login. Keep the same browser and its storage to retain ownership. A different origin (for example GitHub Pages versus Vercel) has separate browser storage and therefore a different anonymous session.
 
-- `profiles`, `recipes`, `recipe_ingredients`, `recipe_steps`, `recipe_saves` 테이블
-- `recipe-videos` 공개 Storage 버킷
-- 사용자 소유권을 강제하는 RLS 정책
+The existing database values and IDs are preserved. English UI labels map to the existing stored category/difficulty values. This redesign requires no new database migration.
 
-`config.js`에는 브라우저에서 공개해도 안전한 Supabase Publishable Key만 있습니다. 비밀 키는 이 프로젝트에 사용하거나 저장하지 않습니다.
+The SQL files under `supabase/` document the schema and historical updates. Existing deployments already have their schema; do not rerun migrations blindly. New installations must configure anonymous sign-ins, profiles, recipes, ingredients, steps, image/video storage and their RLS policies. Display-name uniqueness and ownership enforcement belong in the database, not only the interface.
 
-## 운영 전 확인할 항목
+Publishing uses a draft followed by ingredients/steps, then a published state. Failed final responses are checked before cleanup; uncertain results preserve the recipe and attachments and offer a status check.
 
-- Supabase Authentication의 Site URL과 Redirect URL에 최종 Vercel 주소를 등록합니다.
-- Supabase Authentication에서 **Allow anonymous sign-ins**를 켜야 합니다. 익명 세션은 업로드 파일과 게시물의 소유자를 분리하기 위한 기술적 세션이며, 방문자에게 로그인 화면을 보여주지 않습니다.
-- 공개 영상은 업로드 사용량과 공개 범위를 고려해 운영합니다.
+`config.js` contains only the public Supabase URL and publishable key. Never put a secret/service-role key in browser code.
 
-## 배포
+## Run and deploy
 
-별도 빌드가 없는 정적 웹앱입니다. Git에 올린 뒤 Vercel에서 프로젝트로 가져오거나 Vercel CLI로 배포할 수 있습니다.
+This is a static site with no build step. Serve the project folder with any static HTTP server. Relative asset URLs work at a GitHub Pages repository subpath and on Vercel.
+
+- GitHub Pages: https://dohoon819.github.io/hanip-recipe/
+- Existing Vercel address: https://hanip-recipe.vercel.app/
+
+The project URL remains unchanged; the product name is now **Recipe Book**.
+
+## Tests
+
+Install a test dependency without changing the static app:
+
+```sh
+npm install --no-save --package-lock=false playwright@1.62.1
+npx playwright install chromium
+node tests/recipe-book.spec.cjs
+```
+
+Optional environment variables: `RECIPE_BOOK_PLAYWRIGHT` (module path), `RECIPE_BOOK_BROWSER` (browser executable), `RECIPE_BOOK_TEST_OUTPUT` (screenshots, default `test-results/`).
+
+The browser suite intercepts Supabase and uploads with in-memory fixtures. It **does not create production posts or accounts**. It covers filters, local bookmarks, cooking checks, composer validation, media switching, draft publication/rollback, duplicate names, load-error recovery and mobile overflow.
+
+For a read-only production smoke test, run `node tests/live-smoke.cjs https://dohoon819.github.io/hanip-recipe/`. It opens the page, reads the public feed and checks both screen sizes without creating a session or posting content.
+
+## Artwork
+
+The hero is decorative brand artwork, not a community recipe or endorsement. See [asset provenance](assets/README.md) for its generation prompt. The favicon and interface icons are code-native SVG.

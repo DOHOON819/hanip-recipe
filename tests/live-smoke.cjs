@@ -1,0 +1,37 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright');
+(async () => {
+  const url = process.argv[2];
+  if (!url || !/^https?:/.test(url)) throw new Error('Pass the site URL to test.');
+  const out = path.resolve(process.env.RECIPE_BOOK_TEST_OUTPUT || 'test-results');
+  fs.mkdirSync(out, { recursive: true });
+  const browser = await chromium.launch({ headless:true, ...(process.env.RECIPE_BOOK_BROWSER ? {executablePath:process.env.RECIPE_BOOK_BROWSER} : {}) });
+  try {
+    const page = await browser.newPage({viewport:{width:1440,height:1050}});
+    const errors = [];
+    const failedAssets = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('response', response => { if (response.status() >= 400 && /\.(js|css|jpg|svg)(\?|$)/.test(response.url())) failedAssets.push(response.url() + ' ' + response.status()); });
+    await page.goto(url, {waitUntil:'networkidle'});
+    await page.waitForFunction(() => document.querySelector('#recipeGrid')?.getAttribute('aria-busy') === 'false');
+    assert.equal(await page.title(), 'Recipe Book — Good food. Worth sharing.');
+    assert.equal(await page.locator('#retryButton').isVisible(), false, 'Production feed is unavailable');
+    assert.equal(await page.locator('.hero-visual img').evaluate(image => image.complete && image.naturalWidth > 0), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    const host = new URL(url).hostname;
+    await page.screenshot({path:path.join(out, host+'-desktop.png'),fullPage:true});
+    const count = await page.locator('.recipe-card').count();
+    await page.locator('[data-media-filter="video"]').click();
+    await page.locator('[data-media-filter="image"]').click();
+    await page.locator('[data-media-filter="all"]').click();
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(() => scrollTo(0,0));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({path:path.join(out, host+'-mobile.png'),fullPage:true});
+    assert.deepEqual(errors, []);
+    assert.deepEqual(failedAssets, []);
+    console.log(JSON.stringify({url,title:await page.title(),recipes:count,mobileOverflow:false,pageErrors:errors,failedAssets}));
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exit(1); });
