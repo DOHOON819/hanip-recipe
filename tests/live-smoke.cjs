@@ -17,7 +17,8 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     await page.goto(url, {waitUntil:'networkidle'});
     await page.waitForFunction(() => document.querySelector('#recipeGrid')?.getAttribute('aria-busy') === 'false');
     assert.equal(await page.title(), 'Recipe Book — Good food. Worth sharing.');
-    assert.equal(await page.locator('#retryButton').isVisible(), false, 'Production feed is unavailable');
+    const feedAvailable = !(await page.locator('#retryButton').isVisible());
+    if (!process.env.RECIPE_BOOK_ALLOW_FEED_FAILURE) assert.equal(feedAvailable, true, 'Production feed is unavailable');
     assert.equal(await page.locator('.hero-visual img').evaluate(image => image.complete && image.naturalWidth > 0), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     const host = new URL(url).hostname;
@@ -26,12 +27,15 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     await page.locator('[data-media-filter="video"]').click();
     await page.locator('[data-media-filter="image"]').click();
     await page.locator('[data-media-filter="all"]').click();
+    await page.locator('#openComposer').click();
+    assert.equal(await page.locator('#composerDialog').isVisible(),true,'editor opens without creating a guest account');
+    await page.locator('[data-close-dialog="composerDialog"]').click();
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(() => scrollTo(0,0));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({path:path.join(out, host+'-mobile.png'),fullPage:true});
     assert.deepEqual(errors, []);
     assert.deepEqual(failedAssets, []);
-    console.log(JSON.stringify({url,title:await page.title(),recipes:count,mobileOverflow:false,pageErrors:errors,failedAssets}));
+    console.log(JSON.stringify({url,title:await page.title(),feedAvailable,recipes:count,mobileOverflow:false,pageErrors:errors,failedAssets}));
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

@@ -213,7 +213,7 @@ function resetRecipeForm() {
   $('#ingredients').replaceChildren(); $('#steps').replaceChildren(); addRow('ingredient'); addRow('step');
   clearSelectedMedia(); state.mediaMode = 'image'; setMediaMode('image'); setFormStep(1); $('#uploadProgress').hidden = true; elements.message.textContent = '';
 }
-async function openComposer() { try { await ensureGuestSession(); await refreshCreatorName(); openDialog(elements.composer); } catch (error) { showToast(friendlyError(error)); } }
+function openComposer() { if (!$('#authorName').value.trim()) $('#authorName').value = state.creatorName; openDialog(elements.composer); }
 function setPublishing(publishing) {
   state.publishing = publishing; $$('button, input, select, textarea', elements.composer).forEach((control) => { control.disabled = publishing; });
   elements.composer.setAttribute('aria-busy', String(publishing)); $('#publishButton').textContent = publishing ? 'Preparing your recipe…' : state.pendingPublication ? 'Check publication status' : 'Publish recipe';
@@ -336,7 +336,7 @@ document.addEventListener('click', (event) => {
   if (target.matches('[data-add-row]') && !state.publishing) { addRow(target.dataset.addRow); return; }
   if (target.matches('.remove-row') && !state.publishing) { const list = target.closest('.entry-row').parentElement; target.closest('.entry-row').remove(); if (!list.children.length) addRow(list.id === 'ingredients' ? 'ingredient' : 'step'); refreshStepNumbers(); }
 });
-async function openProfile() { try { await ensureGuestSession(); await refreshCreatorName(); $('#profileMessage').textContent = ''; openDialog($('#profileDialog')); } catch (error) { showToast(friendlyError(error)); } }
+function openProfile() { $('#profileName').value = state.creatorName; $('#profileMessage').textContent = ''; openDialog($('#profileDialog')); }
 $('#profileForm').addEventListener('submit', async (event) => {
   event.preventDefault(); const button = $('button[type="submit"]', event.currentTarget); if (button.disabled) return;
   button.disabled = true; $('#profileMessage').textContent = '';

@@ -20,6 +20,7 @@ function mockBackend() {
   ].map((r, i) => ({ ...r, image_url:r.image_url ? location.origin + r.image_url : null, description:'Test fixture, never published.', servings:2, visibility:'published', image_fit:'cover', created_at:'2026-11-' + (15-i) + 'T12:00:00Z', profiles:{display_name:'Test kitchen'}, recipe_ingredients:[{position:0,item:'Tomatoes',quantity:'200 g'}], recipe_steps:[{position:0,instruction:'Prepare the ingredients.'},{position:1,instruction:'Cook and serve.'}] }));
   const data = window.__recipeTest = { recipes:sample, profiles:[{id:'test-user',display_name:'Test Chef'}], recipe_ingredients:[], recipe_steps:[], uploads:[], removals:[], failChildren:false, failFeed:false, session:null };
   const session = { user:{id:'test-user'}, access_token:'test-only' };
+  data.session = session;
   function query(table) {
     let action='select', payload, filters=[], one=false;
     const api = {
@@ -163,6 +164,9 @@ function mockBackend() {
   await page.route('**/supabase-js@2/+esm',route=>route.fulfill({contentType:'text/javascript',body:'window.__recipeTest.failFeed=true; export function createClient(){return window.__mockClient;}'}));
   await page.reload({waitUntil:'networkidle'});
   assert.equal(await page.locator('#retryButton').isVisible(),true);
+  await page.locator('.mobile-create').click();
+  assert.equal(await page.locator('#composerDialog').isVisible(),true,'draft editor works while feed is offline');
+  await page.locator('[data-close-dialog="composerDialog"]').click();
   await page.evaluate(()=>{window.__recipeTest.failFeed=false;window.__recipeTest.recipes=[];});
   await page.locator('#retryButton').click();
   assert.equal(await page.locator('.recipe-card').count(),0);
