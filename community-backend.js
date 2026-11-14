@@ -93,7 +93,7 @@ function encodeAuthorization(event) {
 export function createCommunityBackend(config) {
   const secretKey = loadSecretKey(); const pubkey = getPublicKey(secretKey);
   const relays = config.communityRelays || ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.nostr.band'];
-  const mediaUrl = config.communityMediaUrl || 'https://cdn.nostrcheck.me';
+  const mediaUrls = config.communityMediaUrls || [config.communityMediaUrl || 'https://nostrage.com/api/v2/media', 'https://cdn.nostrcheck.me'];
   const sign = (template) => finalizeEvent(template, secretKey);
   const profileFilter = { kinds: [PROFILE_KIND], '#t': [appTag(config)], limit: 500 };
 
@@ -128,18 +128,26 @@ export function createCommunityBackend(config) {
     async upload(file, kind, onProgress) {
       if (file.size > 100 * 1024 * 1024) throw new Error('Community uploads currently support files up to 100 MB.');
       const hash = bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer())));
-      const auth = sign({ kind: 27235, created_at: now(), tags: [['u', mediaUrl], ['method', 'POST'], ['payload', hash]], content: '' });
-      const form = new FormData(); form.append('file', file); form.append('size', String(file.size)); form.append('content_type', file.type); form.append('alt', `Recipe ${kind}`);
-      onProgress?.(12, 'Securing your upload…');
-      const response = await fetch(mediaUrl, { method: 'POST', headers: { Authorization: encodeAuthorization(auth) }, body: form });
-      if (!response.ok) throw new Error(`The ${kind} upload failed (${response.status}). Please try again.`);
-      const data = await response.json(); const tags = data?.nip94_event?.tags || []; const url = tags.find((tag) => tag[0] === 'url')?.[1]; const originalHash = tags.find((tag) => tag[0] === 'ox')?.[1] || hash;
-      if (!url) throw new Error(`The ${kind} upload did not return a usable link.`);
-      onProgress?.(100, 'Upload complete.'); return { url, hash: originalHash, kind };
+      let lastError = null;
+      for (const [index, mediaUrl] of mediaUrls.entries()) {
+        const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 30000);
+        try {
+          const auth = sign({ kind: 27235, created_at: now(), tags: [['u', mediaUrl], ['method', 'POST']], content: '' });
+          const form = new FormData(); form.append('file', file); form.append('size', String(file.size)); form.append('content_type', file.type); form.append('alt', `Recipe ${kind}`);
+          onProgress?.(index ? 35 : 12, index ? 'Trying the backup upload service…' : 'Securing your upload…');
+          const response = await fetch(mediaUrl, { method: 'POST', headers: { Authorization: encodeAuthorization(auth) }, body: form, signal: controller.signal });
+          if (!response.ok) throw new Error(`The ${kind} upload service returned ${response.status}.`);
+          const data = await response.json(); const tags = data?.nip94_event?.tags || []; const url = tags.find((tag) => tag[0] === 'url')?.[1]; const originalHash = tags.find((tag) => tag[0] === 'ox')?.[1] || hash;
+          if (!url) throw new Error(`The ${kind} upload did not return a usable link.`);
+          onProgress?.(100, 'Upload complete.'); return { url, hash: originalHash, kind, server: mediaUrl };
+        } catch (error) { lastError = error; }
+        finally { window.clearTimeout(timeout); }
+      }
+      throw lastError || new Error(`The ${kind} could not upload. Please try again.`);
     },
     async removeUpload(media) {
       if (!media?.hash) return;
-      const url = `${mediaUrl}/${media.hash}`; const auth = sign({ kind: 27235, created_at: now(), tags: [['u', url], ['method', 'DELETE']], content: '' });
+      const url = `${media.server || mediaUrls[0]}/${media.hash}`; const auth = sign({ kind: 27235, created_at: now(), tags: [['u', url], ['method', 'DELETE']], content: '' });
       try { await fetch(url, { method: 'DELETE', headers: { Authorization: encodeAuthorization(auth) } }); } catch { /* Recipe deletion remains successful even if media cleanup is delayed. */ }
     },
     async publishRecipe(value) {
