@@ -1,4 +1,4 @@
-import { createCommunityBackend } from './community-backend.js';
+import { createCommunityBackend } from './community-backend.js?v=20261115-media-failover';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const config = window.HANIP_CONFIG;
