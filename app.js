@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createCommunityBackend } from './community-backend.js';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const config = window.HANIP_CONFIG;
@@ -24,7 +24,9 @@ const DIFFICULTY_LABELS = { '쉬움': 'Easy', '보통': 'Medium', '어려움': '
 const SAVED_KEY = 'recipe-book:saved:v1';
 const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'image', previewUrl: null, step: 1, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
 const elements = { composer: $('#composerDialog'), detail: $('#detailDialog'), form: $('#recipeForm'), grid: $('#recipeGrid'), status: $('#feedStatus'), empty: $('#emptyState'), search: $('#searchInput'), category: $('#categoryFilter'), time: $('#timeFilter'), difficulty: $('#difficultyFilter'), sort: $('#sortFilter'), message: $('#recipeMessage'), toast: $('#toast') };
-const supabase = config?.supabaseUrl && config?.supabasePublishableKey ? createClient(config.supabaseUrl, config.supabasePublishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
+const community = config?.backend === 'community' && !window.__mockClient ? createCommunityBackend(config) : null;
+let supabase = null;
+if (!community && config?.supabaseUrl && config?.supabasePublishableKey) { const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'); supabase = createClient(config.supabaseUrl, config.supabasePublishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }); }
 
 function escapeHtml(value = '') { return String(value ?? '').replace(/[&<>\"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]); }
 function safeUrl(value) { try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -44,6 +46,7 @@ function friendlyError(error, fallback = 'Something went wrong. Please try again
   return error?.message || fallback;
 }
 async function ensureGuestSession() {
+  if (community) { state.session ||= community.session(); return state.session; }
   if (!supabase) throw new Error('Recipe sharing is temporarily unavailable. Please try again later.');
   if (state.session?.user) return state.session;
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -54,10 +57,14 @@ async function ensureGuestSession() {
   state.session = data.session; return data.session;
 }
 async function refreshCreatorName() {
-  if (!state.session?.user || !supabase) return;
-  const { data, error } = await supabase.from('profiles').select('display_name').eq('id', state.session.user.id).maybeSingle();
-  if (error) throw error;
-  state.creatorName = data?.display_name || '';
+  if (!state.session?.user) return;
+  if (community) state.creatorName = await community.creatorName();
+  else {
+    if (!supabase) return;
+    const { data, error } = await supabase.from('profiles').select('display_name').eq('id', state.session.user.id).maybeSingle();
+    if (error) throw error;
+    state.creatorName = data?.display_name || '';
+  }
   const label = $('#profileLabel');
   if (label) label.textContent = state.creatorName || 'Your kitchen'; else if ($('#profileButton')) $('#profileButton').textContent = state.creatorName || 'Your kitchen';
   if ($('#profileButton')) { $('#profileButton').setAttribute('aria-label', state.creatorName ? `Your kitchen: ${state.creatorName}. Change creator name` : 'Choose your creator name'); $('#profileButton').title = state.creatorName || 'Your kitchen'; }
@@ -67,6 +74,7 @@ async function refreshCreatorName() {
 async function claimCreatorName(user, displayName) {
   const name = String(displayName || '').trim();
   if (name.length < 2 || name.length > 40) throw new Error('Your name must be between 2 and 40 characters.');
+  if (community) { state.creatorName = await community.claimName(name); return; }
   const { data: existing, error: lookupError } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
   if (lookupError) throw lookupError;
   if (existing?.display_name === name) { state.creatorName = name; return; }
@@ -78,10 +86,13 @@ async function loadRecipes() {
   state.loading = true; state.loadError = false;
   elements.status.textContent = 'Finding something delicious…'; elements.grid.setAttribute('aria-busy', 'true'); elements.empty.hidden = true;
   try {
-    if (!supabase) throw new Error('Recipe connection is unavailable.');
-    const { data, error } = await supabase.from('recipes').select('id, author_id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, image_fit, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)').eq('visibility', 'published').order('created_at', { ascending: false });
-    if (error) throw error;
-    state.recipes = data || [];
+    if (community) state.recipes = await community.loadRecipes();
+    else {
+      if (!supabase) throw new Error('Recipe connection is unavailable.');
+      const { data, error } = await supabase.from('recipes').select('id, author_id, title, description, category, cook_minutes, servings, difficulty, video_url, image_url, image_fit, created_at, profiles(display_name), recipe_ingredients(position, item, quantity), recipe_steps(position, instruction)').eq('visibility', 'published').order('created_at', { ascending: false });
+      if (error) throw error;
+      state.recipes = data || [];
+    }
   } catch { state.loadError = true; state.recipes = []; }
   finally { state.loading = false; elements.grid.setAttribute('aria-busy', 'false'); renderRecipes(); }
 }
@@ -149,21 +160,30 @@ function renderRecipeDetail(recipe) {
   $('.delete-recipe', elements.detail)?.addEventListener('click', () => deleteRecipe(recipe));
   openDialog(elements.detail);
 }
-async function shareRecipe(recipe) {
-  const url = new URL(window.location.href); url.searchParams.set('recipe', recipe.id); url.hash = 'feed';
-  try {
-    if (navigator.share) await navigator.share({ title: `${recipe.title} · Recipe Book`, url: url.href });
-    else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url.href); showToast('Recipe link copied. Share something delicious.'); }
-    else showToast('Sharing is unavailable in this browser.');
-  } catch (error) { if (error.name !== 'AbortError') showToast('Could not share the link. Please try again.'); }
+let activeShare = null;
+function recipeShareUrl(recipeId) { const url = new URL(window.location.href); url.search = ''; url.searchParams.set('recipe', recipeId); url.hash = 'feed'; return url.href; }
+function shareRecipe(recipe) {
+  activeShare = { title: `${recipe.title} · Recipe Book`, url: recipeShareUrl(recipe.id) };
+  $('#shareLink').value = activeShare.url; $('#shareMessage').textContent = '';
+  $('#nativeShareButton').hidden = typeof navigator.share !== 'function'; openDialog($('#shareDialog'));
+}
+async function copyShareLink() {
+  if (!activeShare) return;
+  let copied = false;
+  try { if (navigator.clipboard?.writeText && window.isSecureContext) { await navigator.clipboard.writeText(activeShare.url); copied = true; } } catch { /* Use the selection fallback below. */ }
+  if (!copied) {
+    const input = $('#shareLink'); input.focus(); input.select(); input.setSelectionRange(0, input.value.length);
+    try { copied = document.execCommand('copy'); } catch { copied = false; }
+  }
+  $('#shareMessage').textContent = copied ? 'Link copied. Ready to share.' : 'The link is selected. Press Ctrl+C or choose Copy from your device.';
 }
 async function deleteRecipe(recipe) {
   if (recipe.author_id !== state.session?.user?.id) return;
   if (!window.confirm(`Delete “${recipe.title}”? This cannot be undone.`)) return;
   const button = $('.delete-recipe', elements.detail); if (button) button.disabled = true;
   try {
-    const { error } = await supabase.from('recipes').delete().eq('id', recipe.id).eq('author_id', state.session.user.id);
-    if (error) throw error;
+    if (community) await community.deleteRecipe(recipe);
+    else { const { error } = await supabase.from('recipes').delete().eq('id', recipe.id).eq('author_id', state.session.user.id); if (error) throw error; }
     closeDialog(elements.detail); state.saved.delete(recipe.id); writeSaved(); await loadRecipes(); showToast('Your recipe has been deleted.');
   } catch (error) { showToast(friendlyError(error, 'We could not delete this recipe.')); }
   finally { if (button) button.disabled = false; }
@@ -216,8 +236,8 @@ function setMediaMode(mode) {
 }
 function handleMediaSelect(file, kind) {
   if (!file || state.publishing) return;
-  const video = kind === 'video'; const types = video ? ['video/mp4', 'video/webm', 'video/quicktime'] : ['image/jpeg', 'image/png', 'image/webp']; const limit = (video ? 100 : 10) * 1024 * 1024;
-  if (!types.includes(file.type) || !file.size || file.size > limit) { const retained = state.selectedFile || state.selectedImage ? ' Your previous attachment is still selected.' : ''; showToast((video ? 'Choose an MP4, WebM or MOV video under 100 MB.' : 'Choose a JPG, PNG or WebP photo under 10 MB.') + retained); $(video ? '#videoFile' : '#imageFile').value = ''; return; }
+  const video = kind === 'video'; const types = video ? ['video/mp4', 'video/webm', 'video/quicktime'] : ['image/jpeg', 'image/png', 'image/webp']; const maxMb = video ? 100 : 10; const limit = maxMb * 1024 * 1024;
+  if (!types.includes(file.type) || !file.size || file.size > limit) { const retained = state.selectedFile || state.selectedImage ? ' Your previous attachment is still selected.' : ''; showToast((video ? `Choose an MP4, WebM or MOV video under ${maxMb} MB.` : `Choose a JPG, PNG or WebP photo under ${maxMb} MB.`) + retained); $(video ? '#videoFile' : '#imageFile').value = ''; return; }
   clearSelectedMedia(); state.mediaMode = kind;
   if (video) state.selectedFile = file; else state.selectedImage = file;
   state.previewUrl = URL.createObjectURL(file); const preview = document.createElement(video ? 'video' : 'img'); preview.src = state.previewUrl;
@@ -237,6 +257,11 @@ function setPublishing(publishing) {
 }
 function safeFileName(name) { const extension = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'; return `${crypto.randomUUID()}.${extension}`; }
 async function uploadFile(file, userId, bucket, kind, uploadedFiles) {
+  if (community) {
+    $('#uploadProgress').hidden = false; $('#progressBar').style.width = '0%'; $('#uploadPercent').textContent = '0%'; $('#uploadProgressLabel').textContent = `Uploading ${kind}…`;
+    const media = await community.upload(file, kind, (progress, detail) => { $('#progressBar').style.width = `${progress}%`; $('#uploadPercent').textContent = `${progress}%`; $('#uploadDetail').textContent = detail; });
+    uploadedFiles.push(media); return media;
+  }
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session?.access_token) throw new Error('Your upload session expired. Please try again.');
   if (!window.tus?.Upload) throw new Error('The upload service has not loaded. Refresh this page and try again.');
@@ -257,6 +282,7 @@ async function uploadFile(file, userId, bucket, kind, uploadedFiles) {
   return { path, url: supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl };
 }
 async function cleanupSubmission(draftId, uploadedFiles) {
+  if (community) { await Promise.allSettled(uploadedFiles.map((media) => community.removeUpload(media))); return true; }
   if (draftId) {
     try {
       const { data, error } = await supabase.from('recipes').delete().eq('id', draftId).eq('author_id', state.session.user.id).eq('visibility', 'draft').select('id');
@@ -269,7 +295,7 @@ async function cleanupSubmission(draftId, uploadedFiles) {
 }
 async function finishPublication() {
   state.pendingPublication = null; setPublishing(false); closeDialog(elements.composer); resetRecipeForm();
-  try { await refreshCreatorName(); } catch { /* Publication succeeded; a name refresh can wait. */ }
+  if (!community) { try { await refreshCreatorName(); } catch { /* Publication succeeded; a name refresh can wait. */ } }
   clearFilters(); state.view = 'all'; await loadRecipes(); $('#feed').scrollIntoView({ behavior: 'smooth' }); showToast('Your recipe is live. Thanks for sharing your kitchen.');
 }
 async function checkPublicationStatus() {
@@ -300,6 +326,10 @@ async function publishRecipe(event) {
     if (state.selectedFile) video = await uploadFile(state.selectedFile, userId, 'recipe-videos', 'video', uploadedFiles);
     if (state.selectedImage) image = await uploadFile(state.selectedImage, userId, 'recipe-images', 'photo', uploadedFiles);
     $('#publishButton').textContent = 'Saving your recipe…';
+    if (community) {
+      const communityEvent = await community.publishRecipe({ author_name: state.creatorName, title: $('#recipeTitle').value.trim(), description: $('#recipeDescription').value.trim(), category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, image_fit: $('#imageFit').value, media: { video, image }, recipe_ingredients: ingredients, recipe_steps: steps });
+      draftId = communityEvent.id; published = true; await finishPublication(); return;
+    }
     const { data: draft, error: recipeError } = await supabase.from('recipes').insert({ author_id: userId, title: $('#recipeTitle').value.trim(), description: $('#recipeDescription').value.trim(), category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, video_path: video?.path || null, video_url: video?.url || null, video_mime: state.selectedFile?.type || null, video_size_bytes: state.selectedFile?.size || null, image_path: image?.path || null, image_url: image?.url || null, image_mime: state.selectedImage?.type || null, image_size_bytes: state.selectedImage?.size || null, image_fit: $('#imageFit').value, visibility: 'draft' }).select('id').single();
     if (recipeError) throw recipeError; draftId = draft.id;
     const [ingredientResult, stepResult] = await Promise.all([supabase.from('recipe_ingredients').insert(ingredients.map((item, position) => ({ recipe_id: draftId, position, ...item }))), supabase.from('recipe_steps').insert(steps.map((instruction, position) => ({ recipe_id: draftId, position, instruction })))]);
@@ -331,6 +361,8 @@ elements.search.addEventListener('input', renderRecipes);
 $('#clearFilters')?.addEventListener('click', clearFilters);
 $('#emptyClearButton')?.addEventListener('click', clearFilters);
 $('#retryButton')?.addEventListener('click', loadRecipes);
+$('#copyShareLink')?.addEventListener('click', copyShareLink);
+$('#nativeShareButton')?.addEventListener('click', async () => { if (!activeShare || typeof navigator.share !== 'function') return; try { await navigator.share(activeShare); } catch (error) { if (error.name !== 'AbortError') $('#shareMessage').textContent = 'Your device could not open its share menu. Copy the link instead.'; } });
 $('#filtersButton')?.addEventListener('click', () => { const panel = $('#filterPanel'); panel.hidden = !panel.hidden; $('#filtersButton').setAttribute('aria-expanded', String(!panel.hidden)); });
 $('#surpriseButton')?.addEventListener('click', () => { const recipes = filteredRecipes(); if (!recipes.length) { showToast('Add a recipe or clear your filters to find some inspiration.'); return; } renderRecipeDetail(recipes[Math.floor(Math.random() * recipes.length)]); });
 document.addEventListener('click', (event) => {
@@ -368,7 +400,8 @@ window.addEventListener('storage', (event) => { if (event.key === SAVED_KEY) { s
 supabase?.auth.onAuthStateChange((_event, session) => { state.session = session; });
 (async function initialize() {
   resetRecipeForm();
-  if (supabase) { try { const { data: { session } } = await supabase.auth.getSession(); state.session = session; await refreshCreatorName(); } catch { /* Browsing remains available without a creator session. */ } }
+  if (community) { try { state.session = community.session(); await refreshCreatorName(); } catch { /* Browsing remains available even if profile relays are temporarily offline. */ } }
+  else if (supabase) { try { const { data: { session } } = await supabase.auth.getSession(); state.session = session; await refreshCreatorName(); } catch { /* Browsing remains available without a creator session. */ } }
   await loadRecipes();
   const sharedId = new URL(window.location.href).searchParams.get('recipe');
   if (sharedId) { const recipe = state.recipes.find((item) => item.id === sharedId); if (recipe) renderRecipeDetail(recipe); else if (!state.loadError) showToast('That recipe is no longer available. Explore something new.'); }

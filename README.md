@@ -1,6 +1,6 @@
 # Recipe Book
 
-An English-first, mobile-friendly recipe-sharing app. Warm ivory, forest-green details and an original food photograph give it a modern cookbook identity without filling the community feed with invented posts.
+An English-first, mobile-friendly recipe-sharing app with a vivid citrus-and-forest identity and an original Recipe Book logo. The community feed contains only real user submissions—no invented launch posts.
 
 ## Experience
 
@@ -17,15 +17,13 @@ An English-first, mobile-friendly recipe-sharing app. Warm ivory, forest-green d
 
 ## Identity and data
 
-Supabase anonymous authentication identifies the owner of a recipe. A creator name is **not** a password, recovery method or transferable login. Keep the same browser and its storage to retain ownership. A different origin (for example GitHub Pages versus Vercel) has separate browser storage and therefore a different anonymous session.
+The production app uses a no-sign-up community backend. Each browser creates a private local signing key and publishes signed recipe/profile events to redundant public relays. The key never leaves that browser; it proves ownership when deleting a recipe. A creator name is **not** a password or recovery method. Keep the same browser storage to retain ownership.
 
-Existing database values and IDs are preserved. English UI labels map to the stored category/difficulty values. Existing Supabase projects must run `supabase/add-global-recipe-categories.sql` once before publishing with a newly added category.
+Creator names are checked case-insensitively against current community profiles before they are claimed. Signed ownership prevents someone using a different browser key from deleting another creator's recipe. Clearing browser data removes the local ownership key, so there is intentionally no password-reset flow.
 
-The SQL files under `supabase/` document the schema and historical updates. Existing deployments already have their schema; do not rerun migrations blindly. New installations must configure anonymous sign-ins, profiles, recipes, ingredients, steps, image/video storage and their RLS policies. Display-name uniqueness and ownership enforcement belong in the database, not only the interface.
+Photos and videos are uploaded with signed HTTP authorization to the configured public media service. The current free tier supports JPG/PNG/WebP up to 10 MB in the interface and MP4/WebM/MOV up to 100 MB. Recipe events are replicated to the relays configured in `config.js`; media is removed on creator deletion when the host accepts the cleanup request.
 
-Publishing uses a draft followed by ingredients/steps, then a published state. Failed final responses are checked before cleanup; uncertain results preserve the recipe and attachments and offer a status check.
-
-`config.js` contains only the public Supabase URL and publishable key. Never put a secret/service-role key in browser code.
+The historical Supabase implementation and migrations remain available as a fallback/reference under `supabase/`. `config.js` contains only browser-safe public settings. Never put a secret/service-role key in browser code.
 
 ## Run and deploy
 
@@ -48,10 +46,12 @@ node tests/recipe-book.spec.cjs
 
 Optional environment variables: `RECIPE_BOOK_PLAYWRIGHT` (module path), `RECIPE_BOOK_BROWSER` (browser executable), `RECIPE_BOOK_TEST_OUTPUT` (screenshots, default `test-results/`).
 
-The browser suite intercepts Supabase and uploads with in-memory fixtures. It **does not create production posts or accounts**. It covers filters, local bookmarks, cooking checks, composer validation, media switching, draft publication/rollback, duplicate names, load-error recovery and mobile overflow.
+The main browser suite intercepts the backend and uploads with in-memory fixtures. It **does not create production posts or accounts**. It covers filters, local bookmarks, cooking checks, composer validation, media switching, draft publication/rollback, duplicate names, load-error recovery, sharing and mobile overflow.
+
+`tests/community-smoke.spec.cjs` checks the live public feed. `tests/community-publish.spec.cjs` performs an end-to-end photo or video publish, opens the shared deep link as a new visitor, and immediately deletes the clearly marked test recipe.
 
 For a read-only production smoke test, run `node tests/live-smoke.cjs https://dohoon819.github.io/hanip-recipe/`. It opens the page, reads the public feed and checks both screen sizes without creating a session or posting content.
 
 ## Artwork
 
-The hero is decorative brand artwork, not a community recipe or endorsement. See [asset provenance](assets/README.md) for its generation prompt. The favicon and interface icons are code-native SVG.
+The hero, link-preview image, favicon and interface icons are original code-native Recipe Book artwork. See [asset notes](assets/README.md).

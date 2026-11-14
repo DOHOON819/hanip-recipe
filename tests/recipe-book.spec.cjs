@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright');
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(process.env.RECIPE_BOOK_ROOT || path.resolve(__dirname, '..'));
 const out = path.resolve(process.env.RECIPE_BOOK_TEST_OUTPUT || 'test-results');
 fs.mkdirSync(out, { recursive: true });
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
@@ -14,9 +14,9 @@ const server = http.createServer((req, res) => {
 });
 function mockBackend() {
   const sample = [
-    { id:'photo-one', author_id:'other', title:'Tomato & basil pasta', category:'면·파스타', cook_minutes:20, difficulty:'쉬움', image_url:'/assets/recipe-book-pasta.jpg', video_url:null },
+    { id:'photo-one', author_id:'other', title:'Tomato & basil pasta', category:'면·파스타', cook_minutes:20, difficulty:'쉬움', image_url:'/assets/recipe-book-logo.png', video_url:null },
     { id:'video-one', author_id:'other', title:'A quick Korean bowl', category:'한식', cook_minutes:15, difficulty:'쉬움', image_url:null, video_url:'https://example.test/test.webm' },
-    { id:'dessert-one', author_id:'other', title:'Weekend chocolate cake', category:'디저트', cook_minutes:55, difficulty:'보통', image_url:'/assets/recipe-book-pasta.jpg', video_url:null }
+    { id:'dessert-one', author_id:'other', title:'Weekend chocolate cake', category:'디저트', cook_minutes:55, difficulty:'보통', image_url:'/assets/recipe-book-logo.png', video_url:null }
   ].map((r, i) => ({ ...r, image_url:r.image_url ? location.origin + r.image_url : null, description:'Test fixture, never published.', servings:2, visibility:'published', image_fit:'cover', created_at:'2026-11-' + (15-i) + 'T12:00:00Z', profiles:{display_name:'Test kitchen'}, recipe_ingredients:[{position:0,item:'Tomatoes',quantity:'200 g'}], recipe_steps:[{position:0,instruction:'Prepare the ingredients.'},{position:1,instruction:'Cook and serve.'}] }));
   const data = window.__recipeTest = { recipes:sample, profiles:[{id:'test-user',display_name:'Test Chef'}], recipe_ingredients:[], recipe_steps:[], uploads:[], removals:[], failChildren:false, failFeed:false, session:null };
   const session = { user:{id:'test-user'}, access_token:'test-only' };
@@ -50,7 +50,7 @@ function mockBackend() {
   window.__mockClient = {
     from:query,
     auth:{getSession:async()=>({data:{session:data.session},error:null}),signInAnonymously:async()=>{data.session=session;return {data:{session},error:null};},onAuthStateChange(){return {data:{subscription:{unsubscribe(){}}}};}},
-    storage:{from:bucket=>({getPublicUrl:p=>({data:{publicUrl:location.origin+'/assets/recipe-book-pasta.jpg'}}),remove:async p=>{data.removals.push({bucket,paths:p});return {error:null};}})}
+    storage:{from:bucket=>({getPublicUrl:p=>({data:{publicUrl:location.origin+'/assets/recipe-book-logo.png'}}),remove:async p=>{data.removals.push({bucket,paths:p});return {error:null};}})}
   };
 }
 (async()=>{
@@ -61,6 +61,7 @@ function mockBackend() {
   await context.route('**/fonts.googleapis.com/**',route=>route.continue());
   await context.addInitScript(mockBackend);
   await context.route('**/supabase-js@2/+esm',route=>route.fulfill({contentType:'text/javascript',body:'export function createClient(){return window.__mockClient;}'}));
+  await context.route('**/nostr-tools@2/+esm',route=>route.fulfill({contentType:'text/javascript',body:'export const generateSecretKey=()=>new Uint8Array(32); export const getPublicKey=()=>"test"; export const finalizeEvent=x=>x; export const verifyEvent=()=>true;'}));
   await context.route('**/tus.min.js',route=>route.fulfill({contentType:'text/javascript',body:'window.tus={Upload:class{constructor(file,opts){this.opts=opts;} start(){window.__recipeTest.uploads.push(this.opts.metadata);this.opts.onProgress(100,100);this.opts.onSuccess();}}};'}));
   await context.route('https://example.test/**',route=>route.fulfill({status:204,body:''}));
   const page=await context.newPage();
@@ -97,6 +98,13 @@ function mockBackend() {
   await page.locator('#sortFilter').selectOption('quickest');
   assert.match(await page.locator('.recipe-card').first().innerText(),/Korean/);
   await page.locator('[data-recipe-id="photo-one"]').first().click();
+  await page.locator('#shareRecipeButton').click();
+  assert.equal(await page.locator('#shareDialog').isVisible(),true);
+  assert.match(await page.locator('#shareLink').inputValue(),/\?recipe=photo-one#feed$/);
+  await page.locator('#copyShareLink').click();
+  await page.waitForFunction(()=>document.querySelector('#shareMessage').textContent.trim().length>0);
+  assert.match(await page.locator('#shareMessage').innerText(),/Link copied|link is selected/);
+  await page.locator('[data-close-dialog="shareDialog"]').click();
   await page.locator('.ingredient-checklist input').check();
   assert.equal(await page.locator('.ingredient-checklist input').isChecked(),true);
   await page.locator('#cookModeButton').click();
@@ -117,7 +125,7 @@ function mockBackend() {
   await page.locator('[data-quantity]').fill('2 cups');
   await page.locator('#steps textarea').fill('Chop, cook and serve.');
   await page.locator('#composerNext').click();
-  await page.locator('#imageFile').setInputFiles(path.join(root,'assets/recipe-book-pasta.jpg'));
+  await page.locator('#imageFile').setInputFiles(path.join(root,'assets/recipe-book-logo.png'));
   assert.equal(await page.locator('#mediaPreview img').count(),1);
   await page.locator('[data-media-mode="video"]').click();
   assert.equal(await page.locator('#mediaPreview img').count(),0);
@@ -138,7 +146,7 @@ function mockBackend() {
   await page.locator('[data-item]').fill('Basil');
   await page.locator('#steps textarea').fill('Tear the leaves.');
   await page.locator('#composerNext').click();
-  await page.locator('#imageFile').setInputFiles(path.join(root,'assets/recipe-book-pasta.jpg'));
+  await page.locator('#imageFile').setInputFiles(path.join(root,'assets/recipe-book-logo.png'));
   await page.evaluate(()=>window.__recipeTest.failChildren=true);
   await page.locator('#publishButton').click();
   await page.waitForFunction(()=>!document.querySelector('#publishButton').disabled);
