@@ -2,7 +2,24 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const config = window.HANIP_CONFIG;
-const CATEGORY_LABELS = { '한식': 'Korean', '간편식': 'Quick & Easy', '면·파스타': 'Noodles & Pasta', '디저트': 'Desserts', '음료': 'Drinks', '기타': 'Other' };
+const CATEGORY_LABELS = {
+  '한식': 'Korean',
+  '일식': 'Japanese',
+  '중식': 'Chinese',
+  '멕시칸': 'Mexican',
+  '아메리칸': 'American',
+  '프렌치': 'French',
+  '이탈리안': 'Italian',
+  '인도식': 'Indian',
+  '브런치': 'Brunch',
+  '도시락': 'Lunchbox',
+  '간편식': 'Quick & Easy',
+  '면·파스타': 'Noodles & Pasta',
+  '채식': 'Vegetarian',
+  '디저트': 'Desserts',
+  '음료': 'Drinks',
+  '기타': 'Other'
+};
 const DIFFICULTY_LABELS = { '쉬움': 'Easy', '보통': 'Medium', '어려움': 'Advanced' };
 const SAVED_KEY = 'recipe-book:saved:v1';
 const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'image', previewUrl: null, step: 1, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };

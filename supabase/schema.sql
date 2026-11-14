@@ -15,7 +15,7 @@ create table if not exists public.recipes (
   author_id uuid not null references public.profiles(id) on delete cascade,
   title text not null check (char_length(title) between 2 and 80),
   description text not null default '' check (char_length(description) <= 600),
-  category text not null check (category in ('한식', '간편식', '면·파스타', '디저트', '음료', '기타')),
+  category text not null check (category in ('한식', '일식', '중식', '멕시칸', '아메리칸', '프렌치', '이탈리안', '인도식', '브런치', '도시락', '간편식', '면·파스타', '채식', '디저트', '음료', '기타')),
   cook_minutes integer not null check (cook_minutes between 1 and 600),
   servings integer not null default 1 check (servings between 1 and 50),
   difficulty text not null default '쉬움' check (difficulty in ('쉬움', '보통', '어려움')),

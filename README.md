@@ -5,6 +5,7 @@ An English-first, mobile-friendly recipe-sharing app. Warm ivory, forest-green d
 ## Experience
 
 - Discover all recipes, videos, photos or your saved collection.
+- Browse Korean, Japanese, Chinese, Mexican, American, French, Italian, Indian, brunch, lunchbox, quick, pasta, vegetarian, dessert and drink categories.
 - Combine ingredient/title search with category, cooking-time and difficulty filters; sort by newest or quickest.
 - Explore quick meals, noodles & pasta, desserts, or a random matching recipe.
 - Save favorites **on the current browser/device**. Bookmarks do not sync between devices.
@@ -18,7 +19,7 @@ An English-first, mobile-friendly recipe-sharing app. Warm ivory, forest-green d
 
 Supabase anonymous authentication identifies the owner of a recipe. A creator name is **not** a password, recovery method or transferable login. Keep the same browser and its storage to retain ownership. A different origin (for example GitHub Pages versus Vercel) has separate browser storage and therefore a different anonymous session.
 
-The existing database values and IDs are preserved. English UI labels map to the existing stored category/difficulty values. This redesign requires no new database migration.
+Existing database values and IDs are preserved. English UI labels map to the stored category/difficulty values. Existing Supabase projects must run `supabase/add-global-recipe-categories.sql` once before publishing with a newly added category.
 
 The SQL files under `supabase/` document the schema and historical updates. Existing deployments already have their schema; do not rerun migrations blindly. New installations must configure anonymous sign-ins, profiles, recipes, ingredients, steps, image/video storage and their RLS policies. Display-name uniqueness and ownership enforcement belong in the database, not only the interface.
 

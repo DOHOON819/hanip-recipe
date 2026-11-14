@@ -69,6 +69,8 @@ function mockBackend() {
   await page.locator('.recipe-card').first().waitFor();
   assert.equal(await page.title(),'Recipe Book — Good food. Worth sharing.');
   assert.equal(await page.locator('.recipe-card').count(),3);
+  assert.equal(await page.locator('#recipeCategory option').count(),16);
+  for (const category of ['일식','중식','멕시칸','아메리칸','프렌치','이탈리안','브런치','도시락','간편식']) assert.equal(await page.locator(`#recipeCategory option[value="${category}"]`).count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
   await page.locator('[data-media-filter="video"]').click();
