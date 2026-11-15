@@ -1,6 +1,6 @@
 import { createCommunityBackend } from './community-backend.js?v=20261115-recent-v1';
-import { createSocialExperience, checkVideo } from './social.js?v=20261115-recent-v1';
-import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-recent-v1';
+import { createSocialExperience, checkVideo } from './social.js?v=20261115-privacy-v1';
+import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-privacy-v1';
 import { createRecentHistory, RECENT_KEY } from './recent.js?v=20261115-recent-v1';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];

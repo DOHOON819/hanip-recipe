@@ -1,4 +1,4 @@
-import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261115-recent-v1';
+import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261115-privacy-v1';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url = value => { try { const u = new URL(value); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
