@@ -3,6 +3,7 @@ import { SOCIAL_DICTIONARIES } from './i18n-social.js?v=20261115-shorts-v1';
 import { FEEDBACK_DICTIONARIES, FEEDBACK_ALIASES } from './i18n-feedback.js?v=20261115-shorts-v1';
 import { RECENT_DICTIONARIES } from './i18n-recent.js?v=20261115-recent-v1';
 import { PRIVACY_DICTIONARIES } from './i18n-privacy.js?v=20261115-privacy-v1';
+import { QUICK_DICTIONARIES } from './i18n-quick.js?v=20261115-quick-post-v1';
 
 const STORAGE_KEY = 'recipe-story:language:v1';
 const SUPPORTED = ['en', 'en-AU', 'ko', 'ja', 'fr', 'it', 'hi', 'es-MX', 'zh-CN', 'ar'];
@@ -125,6 +126,7 @@ Object.assign(ja, {
 });
 
 const dictionaries = { en: {}, ko, ja, ...EXTRA_DICTIONARIES };
+for (const [locale, values] of Object.entries(QUICK_DICTIONARIES)) Object.assign(dictionaries[locale], values);
 for (const [locale, values] of Object.entries(FEEDBACK_DICTIONARIES)) Object.assign(dictionaries[locale], values);
 for (const [locale, values] of Object.entries(SOCIAL_DICTIONARIES)) dictionaries[locale] = { ...dictionaries[locale], ...values };
 for (const [locale, values] of Object.entries(RECENT_DICTIONARIES)) Object.assign(dictionaries[locale], values);

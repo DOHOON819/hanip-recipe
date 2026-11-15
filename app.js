@@ -1,6 +1,6 @@
-import { createCommunityBackend } from './community-backend.js?v=20261115-recent-v1';
+import { createCommunityBackend } from './community-backend.js?v=20261115-quick-post-v1';
 import { createSocialExperience, checkVideo } from './social.js?v=20261115-privacy-v1';
-import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-privacy-v1';
+import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-quick-post-v1';
 import { createRecentHistory, RECENT_KEY } from './recent.js?v=20261115-recent-v1';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -30,7 +30,7 @@ const SAVED_KEY = 'recipe-book:saved:v1';
 let historyStorage; try { historyStorage = window.localStorage; } catch { historyStorage = null; }
 const recentHistory = createRecentHistory(historyStorage);
 let historyRecipes = null, historyLoading = false, historyError = false, historyRequest = 0, historyStorageWarned = false;
-const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'image', previewUrl: null, step: 1, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
+const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'none', previewUrl: null, step: 3, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
 const elements = { composer: $('#composerDialog'), detail: $('#detailDialog'), form: $('#recipeForm'), grid: $('#recipeGrid'), status: $('#feedStatus'), empty: $('#emptyState'), search: $('#searchInput'), category: $('#categoryFilter'), time: $('#timeFilter'), difficulty: $('#difficultyFilter'), sort: $('#sortFilter'), message: $('#recipeMessage'), toast: $('#toast') };
 const community = config?.backend === 'community' && !window.__mockClient ? createCommunityBackend(config) : null;
 let supabase = null;
@@ -43,7 +43,6 @@ $('.category-nav [data-category="인도식"]').insertAdjacentHTML('afterend', '<
 $('.side-nav [data-view="saved"]').insertAdjacentHTML('afterend', `<button type="button" data-view="recent">${icon('clock')}<span>Recently viewed</span><span class="count" id="recentCount">0</span></button>`);
 $('.media-feed-tabs').insertAdjacentHTML('beforeend', `<button type="button" data-media-filter="recent" aria-pressed="false">${icon('clock')}<span>Recent</span></button>`);
 $('.feed-toolbar').insertAdjacentHTML('afterend', '<div id="recentTools" class="recent-tools" hidden><p id="historyNotice" role="status"></p><button type="button" id="clearHistory" class="text-button">Clear viewing history</button></div>');
-for (const select of [$('#recipeCategory'), $('#difficulty')]) { select.required = true; const option = new Option(t('Please choose'), '', true, true); select.prepend(option); select.closest('.field').querySelector('label').append(' *'); }
 const australian = new Option('English (Australia)', 'en-AU'); $('#languageSelect').insertBefore(australian, $('#languageSelect').options[1]);
 $('#profileLabel').classList.remove('sr-only'); $('#profileLabel').setAttribute('data-no-translate', ''); $('.language-picker').after($('#profileButton'));
 $('#feedStatus').insertAdjacentHTML('afterend', `<button type="button" id="refreshFeed" class="text-button">${icon('refresh')}<span>${t('Refresh recipes')}</span></button>`);
@@ -276,32 +275,41 @@ function addRow(kind, values = {}) {
 }
 function refreshStepNumbers() { $$('#steps .row-number').forEach((element, index) => { element.textContent = String(index + 1).padStart(2, '0'); }); }
 function getEntryValues() { const ingredients = $$('#ingredients .entry-row').map((row) => ({ quantity: $('[data-quantity]', row).value.trim(), item: $('[data-item]', row).value.trim() })).filter((item) => item.item || item.quantity); const steps = $$('#steps textarea').map((textarea) => textarea.value.trim()).filter(Boolean); return { ingredients, steps }; }
-function setFormStep(step) {
-  state.step = Math.min(3, Math.max(1, step));
-  $$('[data-form-step]').forEach((section) => { section.hidden = Number(section.dataset.formStep) !== state.step; });
-  $$('[data-step-indicator]').forEach((indicator) => { const number = Number(indicator.dataset.stepIndicator); indicator.classList.toggle('active', number === state.step); indicator.classList.toggle('completed', number < state.step); if (number === state.step) indicator.setAttribute('aria-current', 'step'); else indicator.removeAttribute('aria-current'); });
-  $('#composerBack').hidden = state.step === 1; $('#composerNext').hidden = state.step === 3; $('#publishButton').hidden = state.step !== 3; elements.message.textContent = '';
+function setFormStep() { state.step = 3; elements.message.textContent = ''; }
+function generatedTitle(description) {
+  const firstLine = String(description || '').split(/\r?\n/).map(line => line.trim()).find(Boolean) || 'Quick recipe';
+  const compact = firstLine.replace(/^[#>*\-\s]+/, '').replace(/\s+/g, ' ').trim();
+  return (compact.length >= 2 ? compact : 'Quick recipe').slice(0, 80).trim();
 }
+function recipeDraft() {
+  const description = $('#recipeDescription').value.trim();
+  return {
+    description,
+    title: $('#recipeTitle').value.trim() || generatedTitle(description),
+    cuisine: $('#recipeCuisine').value || 'Other cuisine',
+    category: $('#recipeCategory').value || '기타',
+    difficulty: $('#difficulty').value || '쉬움',
+    cookMinutes: Number($('#cookMinutes').value) || 1,
+    servings: Number($('#servings').value) || 1
+  };
+}
+function guestCreatorName(userId) { return `Cook ${String(userId || crypto.randomUUID()).replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase()}`; }
 function validateStep(step) {
   let message = ''; let target;
   if (step === 1) {
-    const name = $('#authorName').value.trim(); const title = $('#recipeTitle').value.trim(); const minutes = Number($('#cookMinutes').value); const servings = Number($('#servings').value);
-    if (name.length < 2 || name.length > 40) { message = t('Choose a creator name between 2 and 40 characters.'); target = $('#authorName'); }
-    else if (title.length < 2 || title.length > 80) { message = t('Give your recipe a title between 2 and 80 characters.'); target = $('#recipeTitle'); }
-    else if ($('#recipeDescription').value.trim().length < 20 || $('#recipeDescription').value.trim().length > 2000) { message = t('Describe your recipe in 20–2,000 characters.'); target = $('#recipeDescription'); }
-    else if (!CUISINES.includes($('#recipeCuisine').value)) { message = t('Choose a country or cuisine.'); target = $('#recipeCuisine'); }
-    else if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) { message = t('Cooking time must be a whole number from 1 to 600 minutes.'); target = $('#cookMinutes'); }
-    else if (!Number.isInteger(servings) || servings < 1 || servings > 50) { message = t('Servings must be a whole number from 1 to 50.'); target = $('#servings'); }
-    else if (!CATEGORY_LABELS[$('#recipeCategory').value] || !DIFFICULTY_LABELS[$('#difficulty').value]) { message = t('Choose a category and difficulty.'); target = $('#recipeCategory'); }
+    const draft = recipeDraft(); const name = $('#authorName').value.trim();
+    if (draft.description.length < 2 || draft.description.length > 2000) { message = t('Write at least 2 characters so people know what you made.'); target = $('#recipeDescription'); }
+    else if (name && (name.length < 2 || name.length > 40)) { message = t('Choose a creator name between 2 and 40 characters.'); target = $('#authorName'); }
+    else if ($('#recipeTitle').value.trim() && ($('#recipeTitle').value.trim().length < 2 || $('#recipeTitle').value.trim().length > 80)) { message = t('Give your recipe a title between 2 and 80 characters.'); target = $('#recipeTitle'); }
+    else if (!Number.isInteger(draft.cookMinutes) || draft.cookMinutes < 1 || draft.cookMinutes > 600) { message = t('Cooking time must be a whole number from 1 to 600 minutes.'); target = $('#cookMinutes'); }
+    else if (!Number.isInteger(draft.servings) || draft.servings < 1 || draft.servings > 50) { message = t('Servings must be a whole number from 1 to 50.'); target = $('#servings'); }
   } else if (step === 2) {
     const { ingredients, steps } = getEntryValues();
-    if (!ingredients.length) { message = t('Add at least one ingredient.'); target = $('[data-item]'); }
-    else if (ingredients.some((item) => !item.item || !item.quantity || item.item.length > 120 || item.quantity.length > 60)) { message = t('Enter an ingredient and its amount on every row.'); target = $('[data-item]'); }
-    else if (!steps.length || steps.some((instruction) => instruction.length < 10 || instruction.length > 500)) { message = t('Add detailed cooking steps (10–500 characters each).'); target = $('#steps textarea'); }
+    if (ingredients.some((item) => !item.item || item.item.length > 120 || item.quantity.length > 60)) { message = t('If you add an ingredient, enter its name. The amount is optional.'); target = $('[data-item]'); }
+    else if (steps.some((instruction) => instruction.length < 2 || instruction.length > 500)) { message = t('If you add a cooking step, use 2–500 characters.'); target = $('#steps textarea'); }
   } else if (mediaChecking) { message = t('Checking video…'); target = $('#videoFile'); }
-  else if (state.mediaMode !== 'none' && !state.selectedFile && !state.selectedImage) { message = t('Choose an attachment or select Recipe only.'); target = $(state.mediaMode === 'video' ? '#videoFile' : '#imageFile'); }
   else if (!['cover', 'contain'].includes($('#imageFit').value)) { message = t('Choose how your photo should fit the card.'); target = $('#imageFit'); }
-  if (message) { setFormStep(step); elements.message.textContent = message; target?.focus(); return false; }
+  if (message) { elements.message.textContent = message; target?.focus(); return false; }
   return true;
 }
 
@@ -335,10 +343,11 @@ async function handleMediaSelect(file, kind) {
 }
 function resetRecipeForm() {
   elements.form.reset(); $('#authorName').value = state.creatorName;
+  $('#recipeCuisine').value = 'Other cuisine'; $('#recipeCategory').value = '기타'; $('#difficulty').value = '쉬움'; $('#cookMinutes').value = '1'; $('#servings').value = '1';
   $('#ingredients').replaceChildren(); $('#steps').replaceChildren(); addRow('ingredient'); addRow('step');
-  clearSelectedMedia(); state.mediaMode = 'image'; setMediaMode('image'); setFormStep(1); $('#uploadProgress').hidden = true; elements.message.textContent = '';
+  clearSelectedMedia(); state.mediaMode = 'none'; setMediaMode('none'); setFormStep(); $('#uploadProgress').hidden = true; elements.message.textContent = ''; $('.optional-recipe-details')?.removeAttribute('open');
 }
-function openComposer() { if (!$('#authorName').value.trim()) $('#authorName').value = state.creatorName; openDialog(elements.composer); }
+function openComposer() { if (!$('#authorName').value.trim()) $('#authorName').value = state.creatorName; openDialog(elements.composer); window.setTimeout(() => $('#recipeDescription')?.focus(), 30); }
 function setPublishing(publishing) {
   state.publishing = publishing; $$('button, input, select, textarea', elements.composer).forEach((control) => { control.disabled = publishing; });
   elements.composer.setAttribute('aria-busy', String(publishing)); $('#publishButton').textContent = t(publishing ? 'Preparing your recipe…' : state.pendingPublication ? 'Check publication status' : 'Publish recipe');
@@ -405,24 +414,25 @@ async function checkPublicationStatus() {
 async function publishRecipe(event) {
   event.preventDefault(); if (state.publishing) return;
   if (state.pendingPublication) { await checkPublicationStatus(); return; }
-  if (state.step < 3) { if (validateStep(state.step)) setFormStep(state.step + 1); return; }
   for (const step of [1, 2, 3]) if (!validateStep(step)) return;
-  const { ingredients, steps } = getEntryValues(); const uploadedFiles = []; let draftId = null; let published = false; let publishAttempted = false;
+  const draft = recipeDraft(); const { ingredients, steps } = getEntryValues(); const uploadedFiles = []; let draftId = null; let published = false; let publishAttempted = false;
   setPublishing(true); elements.message.textContent = '';
   try {
-    await ensureGuestSession(); const userId = state.session.user.id; await claimCreatorName(state.session.user, $('#authorName').value);
+    await ensureGuestSession(); const userId = state.session.user.id; const creatorName = $('#authorName').value.trim() || state.creatorName || guestCreatorName(userId); await claimCreatorName(state.session.user, creatorName); $('#authorName').value = state.creatorName; updateProfileLabel();
     let video = null; let image = null;
     if (state.selectedFile) video = await uploadFile(state.selectedFile, userId, 'recipe-videos', 'video', uploadedFiles);
     if (state.selectedImage) image = await uploadFile(state.selectedImage, userId, 'recipe-images', 'photo', uploadedFiles);
     $('#publishButton').textContent = t('Saving your recipe…');
     if (community) {
-      const communityEvent = await community.publishRecipe({ author_name: state.creatorName, title: $('#recipeTitle').value.trim(), description: $('#recipeDescription').value.trim(), cuisine: $('#recipeCuisine').value, category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, image_fit: $('#imageFit').value, media: { video, image }, recipe_ingredients: ingredients, recipe_steps: steps });
+      const communityEvent = await community.publishRecipe({ author_name: state.creatorName, title: draft.title, description: draft.description, cuisine: draft.cuisine, category: draft.category, cook_minutes: draft.cookMinutes, servings: draft.servings, difficulty: draft.difficulty, image_fit: $('#imageFit').value, media: { video, image }, recipe_ingredients: ingredients, recipe_steps: steps });
       draftId = communityEvent.id; published = true; await finishPublication(); return;
     }
-    const { data: draft, error: recipeError } = await supabase.from('recipes').insert({ author_id: userId, title: $('#recipeTitle').value.trim(), description: $('#recipeDescription').value.trim(), category: $('#recipeCategory').value, cook_minutes: Number($('#cookMinutes').value), servings: Number($('#servings').value), difficulty: $('#difficulty').value, video_path: video?.path || null, video_url: video?.url || null, video_mime: state.selectedFile?.type || null, video_size_bytes: state.selectedFile?.size || null, image_path: image?.path || null, image_url: image?.url || null, image_mime: state.selectedImage?.type || null, image_size_bytes: state.selectedImage?.size || null, image_fit: $('#imageFit').value, visibility: 'draft' }).select('id').single();
-    if (recipeError) throw recipeError; draftId = draft.id;
-    const [ingredientResult, stepResult] = await Promise.all([supabase.from('recipe_ingredients').insert(ingredients.map((item, position) => ({ recipe_id: draftId, position, ...item }))), supabase.from('recipe_steps').insert(steps.map((instruction, position) => ({ recipe_id: draftId, position, instruction })))]);
-    if (ingredientResult.error || stepResult.error) throw ingredientResult.error || stepResult.error;
+    const { data: storedDraft, error: recipeError } = await supabase.from('recipes').insert({ author_id: userId, title: draft.title, description: draft.description, category: draft.category, cook_minutes: draft.cookMinutes, servings: draft.servings, difficulty: draft.difficulty, video_path: video?.path || null, video_url: video?.url || null, video_mime: state.selectedFile?.type || null, video_size_bytes: state.selectedFile?.size || null, image_path: image?.path || null, image_url: image?.url || null, image_mime: state.selectedImage?.type || null, image_size_bytes: state.selectedImage?.size || null, image_fit: $('#imageFit').value, visibility: 'draft' }).select('id').single();
+    if (recipeError) throw recipeError; draftId = storedDraft.id;
+    const childWrites = [];
+    if (ingredients.length) childWrites.push(supabase.from('recipe_ingredients').insert(ingredients.map((item, position) => ({ recipe_id: draftId, position, ...item }))));
+    if (steps.length) childWrites.push(supabase.from('recipe_steps').insert(steps.map((instruction, position) => ({ recipe_id: draftId, position, instruction }))));
+    const childResults = await Promise.all(childWrites); const childError = childResults.find(result => result.error)?.error; if (childError) throw childError;
     publishAttempted = true;
     const { error: publishError } = await supabase.from('recipes').update({ visibility: 'published' }).eq('id', draftId).eq('author_id', userId);
     if (publishError) throw publishError; published = true;
@@ -438,8 +448,6 @@ async function publishRecipe(event) {
 }
 
 elements.form.addEventListener('submit', publishRecipe);
-$('#composerNext').addEventListener('click', () => { if (!state.publishing && validateStep(state.step)) setFormStep(state.step + 1); });
-$('#composerBack').addEventListener('click', () => { if (!state.publishing) setFormStep(state.step - 1); });
 $('#discardDraft')?.addEventListener('click', () => { if (state.pendingPublication) { elements.message.textContent = t('Check the publication status before starting over.'); return; } if (!state.publishing && window.confirm(t('Discard this unfinished recipe and start again?'))) { resetRecipeForm(); showToast(t('Your unfinished recipe has been cleared.')); } });
 $('#videoFile').addEventListener('change', () => handleMediaSelect($('#videoFile').files?.[0], 'video'));
 $('#imageFile').addEventListener('change', () => handleMediaSelect($('#imageFile').files?.[0], 'image'));
