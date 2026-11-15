@@ -1,12 +1,14 @@
+import { EXTRA_DICTIONARIES, EXTRA_META } from './i18n-extra.js?v=20261115-nine-languages';
+
 const STORAGE_KEY = 'recipe-story:language:v1';
-const SUPPORTED = ['en', 'ko', 'ja'];
+const SUPPORTED = ['en', 'ko', 'ja', 'fr', 'it', 'hi', 'es-MX', 'zh-CN', 'ar'];
 
 const ko = {
   'Skip to recipes': '레시피로 바로가기', 'Discover': '둘러보기', 'Watch & cook': '영상으로 요리하기', 'My recipe book': '나의 레시피',
   'Share a recipe': '레시피 올리기', 'Your name': '내 이름', 'YOUR DAILY INSPIRATION': '오늘의 맛있는 영감', 'Video recipes': '영상 레시피',
   'Photo recipes': '사진 레시피', 'WHAT ARE YOU CRAVING?': '오늘은 어떤 음식이 당기나요?', 'A little homemade.': '집에서 만든 한 끼,',
   'A lot to love.': '더 많이 사랑하게 돼요.', 'Your kitchen has a story.': '당신의 주방에는 이야기가 있어요.', "We'd love a taste.": '그 맛을 함께 나눠주세요.',
-  'Share yours': '내 이야기 올리기', 'Made for the joy of cooking.': '요리하는 즐거움을 위해 만들었어요.', 'A PLACE AT THE TABLE': '모두를 위한 식탁',
+  'Share yours': '내 레시피 올리기', 'Made for the joy of cooking.': '요리하는 즐거움을 위해 만들었어요.', 'A PLACE AT THE TABLE': '모두를 위한 식탁',
   'Good food.': '맛있는 음식.', 'Worth sharing.': '함께 나눌 가치가 있어요.', 'Your next favorite meal starts here.': '다음 최애 메뉴는 여기서 시작돼요.',
   'Find it, save it, make it your own.': '찾고, 저장하고, 나만의 요리로 만들어보세요.', 'Find your next meal': '다음 메뉴 찾기',
   'Real recipes. Your kind of cooking.': '진짜 레시피, 나다운 요리.', 'Big flavor. Little time.': '시간은 짧게, 맛은 진하게.',
@@ -118,11 +120,12 @@ Object.assign(ja, {
   'Publication did not finish. Your draft is still here. Click Publish recipe to try again.':'公開を完了できませんでした。入力内容は残っています。もう一度「レシピを公開」を押してください。','We could not confirm publication. Your recipe may already be live. Check its status before trying again; your draft and uploaded files have been kept.':'公開状態を確認できませんでした。すでに公開されている場合があります。状態を確認してください。入力内容とファイルは保持されています。','We could not publish your recipe. Your draft is still here.':'レシピを公開できませんでした。入力内容は残っています。','Your recipe is published. Refresh the feed to see it.':'レシピを公開しました。一覧を更新すると表示されます。','Check the publication status before starting over.':'最初からやり直す前に公開状態を確認してください。','Discard this unfinished recipe and start again?':'作成中のレシピを破棄して最初からやり直しますか？','Your unfinished recipe has been cleared.':'作成中のレシピを消去しました。','Your device could not open its share menu. Copy the link instead.':'共有メニューを開けませんでした。リンクをコピーしてください。','Add a recipe or clear your filters to find some inspiration.':'レシピを追加するか、絞り込みを解除してください。','Your name could not be saved.':'名前を保存できませんでした。','That recipe is no longer available. Explore something new.':'このレシピは現在利用できません。別のレシピを探してみよう。'
 });
 
-const dictionaries = { en: {}, ko, ja };
+const dictionaries = { en: {}, ko, ja, ...EXTRA_DICTIONARIES };
 const meta = {
   en: { title: 'Recipe Story — Good food. Worth sharing.', description: 'Recipe Story is a free photo and video recipe-sharing app. Discover Korean, Japanese, Chinese, Mexican, American, French, Italian and easy home-cooking recipes.', ogDescription: 'Discover, save and share real home-cooking recipes with photos, videos and clear steps.' },
   ko: { title: 'Recipe Story — 맛있는 이야기를 나눠요.', description: 'Recipe Story에서 사진과 영상으로 한식, 일식, 중식, 멕시칸, 아메리칸, 프렌치, 이탈리안과 간편 집밥 레시피를 발견하고 저장하고 공유하세요.', ogDescription: '사진, 영상과 쉬운 조리 순서로 진짜 집밥 레시피를 발견하고 저장하고 공유하세요.' },
-  ja: { title: 'Recipe Story — おいしい物語をシェアしよう。', description: 'Recipe Storyで写真や動画の韓国料理、日本料理、中華、メキシコ、アメリカ、フランス、イタリア料理と簡単な家庭料理レシピを見つけて保存・シェア。', ogDescription: '写真、動画、わかりやすい手順で家庭料理のレシピを見つけ、保存してシェアしよう。' }
+  ja: { title: 'Recipe Story — おいしい物語をシェアしよう。', description: 'Recipe Storyで写真や動画の韓国料理、日本料理、中華、メキシコ、アメリカ、フランス、イタリア料理と簡単な家庭料理レシピを見つけて保存・シェア。', ogDescription: '写真、動画、わかりやすい手順で家庭料理のレシピを見つけ、保存してシェアしよう。' },
+  ...EXTRA_META
 };
 
 function detectLanguage() {
@@ -132,7 +135,9 @@ function detectLanguage() {
 
 let language = detectLanguage();
 const reverse = {};
-for (const locale of ['ko', 'ja']) for (const [english, translated] of Object.entries(dictionaries[locale])) reverse[translated] ||= english;
+for (const locale of SUPPORTED.filter((locale) => locale !== 'en')) for (const [english, translated] of Object.entries(dictionaries[locale])) reverse[translated] ||= english;
+const textKeys = new WeakMap();
+const attributeKeys = new WeakMap();
 
 export function getLanguage() { return language; }
 export function t(key, vars = {}) {
@@ -155,6 +160,7 @@ function translateExact(value) {
 
 export function applyTranslations(root = document) {
   document.documentElement.lang = language;
+  document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.title = meta[language].title;
   document.querySelector('meta[name="description"]')?.setAttribute('content', meta[language].description);
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', meta[language].title);
@@ -163,25 +169,49 @@ export function applyTranslations(root = document) {
   const walker = document.createTreeWalker(root instanceof Document ? root.body : root, NodeFilter.SHOW_TEXT);
   const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
   for (const node of nodes) {
-    if (node.parentElement?.closest('script,style,[data-no-translate],.recipe-card h3,.card-description,.detail-description,.ingredient-checklist,.cooking-steps')) continue;
+    if (node.parentElement?.closest('script,style,#languageSelect,[data-no-translate],.recipe-card h3,.card-description,.detail-description,.ingredient-checklist,.cooking-steps')) continue;
     const raw = node.nodeValue; const trimmed = raw.trim(); if (!trimmed) continue;
-    const translated = translateExact(trimmed); if (translated !== trimmed) node.nodeValue = raw.replace(trimmed, translated);
+    const canonical = textKeys.get(node) || reverse[trimmed] || trimmed; textKeys.set(node, canonical);
+    const translated = language === 'en' ? canonical : dictionaries[language]?.[canonical] || canonical; node.nodeValue = raw.replace(trimmed, translated);
   }
   const scope = root instanceof Document ? root : root;
   scope.querySelectorAll?.('[placeholder],[aria-label],[title],optgroup[label]').forEach((element) => {
-    for (const attr of ['placeholder', 'aria-label', 'title', 'label']) if (element.hasAttribute(attr)) element.setAttribute(attr, translateExact(element.getAttribute(attr)));
+    let keys = attributeKeys.get(element); if (!keys) { keys = {}; attributeKeys.set(element, keys); }
+    for (const attr of ['placeholder', 'aria-label', 'title', 'label']) if (element.hasAttribute(attr)) {
+      const value = element.getAttribute(attr); const canonical = keys[attr] || reverse[value] || value; keys[attr] = canonical;
+      element.setAttribute(attr, language === 'en' ? canonical : dictionaries[language]?.[canonical] || canonical);
+    }
   });
 }
 
 export function localizeCount(count, saved = false) {
   if (language === 'ko') return `${count}개의 레시피${saved ? ' · 이 기기에 저장됨' : ''}`;
   if (language === 'ja') return `${count}件のレシピ${saved ? ' · この端末に保存済み' : ''}`;
+  if (language === 'fr') return `${count} ${count === 1 ? 'recette' : 'recettes'}${saved ? ' · enregistrées sur cet appareil' : ''}`;
+  if (language === 'it') return `${count} ${count === 1 ? 'ricetta' : 'ricette'}${saved ? ' · salvate su questo dispositivo' : ''}`;
+  if (language === 'hi') return `${count} रेसिपी${saved ? ' · इस डिवाइस पर सहेजी गई' : ''}`;
+  if (language === 'es-MX') return `${count} ${count === 1 ? 'receta' : 'recetas'}${saved ? ' · guardadas en este dispositivo' : ''}`;
+  if (language === 'zh-CN') return `${count} 个食谱${saved ? ' · 已收藏在此设备' : ''}`;
+  if (language === 'ar') return `${count} وصفة${saved ? ' · محفوظة على هذا الجهاز' : ''}`;
   return `${count} ${count === 1 ? 'recipe' : 'recipes'}${saved ? ' saved on this device' : ''}`;
 }
 
-export function localizeMinutes(value) { return language === 'ko' ? `${value}분` : language === 'ja' ? `${value}分` : `${value} min`; }
-export function localizeServings(value) { return language === 'ko' ? `${value}인분` : language === 'ja' ? `${value}人分` : `${value} ${Number(value) === 1 ? 'serving' : 'servings'}`; }
-export function byline(author) { return language === 'ko' ? `${author}의 레시피` : language === 'ja' ? `${author}のレシピ` : `BY ${author}`; }
-export function confirmDelete(title) { return language === 'ko' ? `“${title}” 레시피를 삭제할까요? 삭제하면 되돌릴 수 없어요.` : language === 'ja' ? `「${title}」を削除しますか？元に戻せません。` : `Delete “${title}”? This cannot be undone.`; }
+export function localizeMinutes(value) {
+  const units = { ko: '분', ja: '分', fr: ' min', it: ' min', hi: ' मिनट', 'es-MX': ' min', 'zh-CN': '分钟', ar: ' دقيقة' };
+  return `${value}${units[language] ?? ' min'}`;
+}
+export function localizeServings(value) {
+  if (language === 'ko') return `${value}인분`; if (language === 'ja') return `${value}人分`; if (language === 'fr') return `${value} ${Number(value) === 1 ? 'portion' : 'portions'}`;
+  if (language === 'it') return `${value} ${Number(value) === 1 ? 'porzione' : 'porzioni'}`; if (language === 'hi') return `${value} सर्विंग`; if (language === 'es-MX') return `${value} ${Number(value) === 1 ? 'porción' : 'porciones'}`;
+  if (language === 'zh-CN') return `${value} 份`; if (language === 'ar') return `${value} حصة`; return `${value} ${Number(value) === 1 ? 'serving' : 'servings'}`;
+}
+export function byline(author) {
+  const formats = { ko: `${author}의 레시피`, ja: `${author}のレシピ`, fr: `PAR ${author}`, it: `DI ${author}`, hi: `${author} की रेसिपी`, 'es-MX': `POR ${author}`, 'zh-CN': `${author} 的食谱`, ar: `وصفة ${author}` };
+  return formats[language] || `BY ${author}`;
+}
+export function confirmDelete(title) {
+  const messages = { ko: `“${title}” 레시피를 삭제할까요? 삭제하면 되돌릴 수 없어요.`, ja: `「${title}」を削除しますか？元に戻せません。`, fr: `Supprimer « ${title} » ? Cette action est irréversible.`, it: `Eliminare “${title}”? L’operazione non può essere annullata.`, hi: `“${title}” को हटाएँ? इसे वापस नहीं किया जा सकता।`, 'es-MX': `¿Eliminar “${title}”? Esta acción no se puede deshacer.`, 'zh-CN': `要删除“${title}”吗？此操作无法撤销。`, ar: `هل تريد حذف «${title}»؟ لا يمكن التراجع عن ذلك.` };
+  return messages[language] || `Delete “${title}”? This cannot be undone.`;
+}
 
 applyTranslations();
