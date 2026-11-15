@@ -74,7 +74,7 @@ function mockBackend() {
   assert.match(await page.locator('meta[name="robots"]').getAttribute('content'),/index,follow/);
   const structuredData=JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
   assert.equal(structuredData.name,'Recipe Story');
-  assert.deepEqual(structuredData.inLanguage,['en','ko','ja']);
+  assert.deepEqual(structuredData.inLanguage,['en','ko','ja','fr','it','hi','es-MX','zh-CN','ar']);
   const seoFiles=await page.evaluate(async()=>({verification:await fetch('google6bf2038a52595488.html').then(r=>r.text()),sitemap:await fetch('sitemap.xml').then(r=>r.text()),robots:await fetch('robots.txt').then(r=>r.text())}));
   assert.equal(seoFiles.verification.trim(),'google-site-verification: google6bf2038a52595488.html');
   assert.match(seoFiles.sitemap,/https:\/\/dohoon819\.github\.io\/hanip-recipe\//);
@@ -82,9 +82,9 @@ function mockBackend() {
   assert.equal(await page.locator('#languageSelect').count(),1);
   await page.locator('#languageSelect').selectOption('ko');
   assert.equal(await page.locator('html').getAttribute('lang'),'ko');
-  assert.match(await page.locator('#heroTitle').innerText(),/맛있는 음식/);
+  assert.match(await page.locator('#heroTitle').innerText(),/맛있는 레시피/);
   assert.match(await page.locator('#openComposer').innerText(),/레시피 올리기/);
-  assert.match(await page.locator('#composerTitle').innerText(),/맛있는 이야기/);
+  assert.match(await page.locator('#composerTitle').innerText(),/나만의 레시피/);
   assert.match(await page.locator('.media-feed-tabs').innerText(),/전체/);
   assert.match(await page.locator('.recipe-card').first().innerText(),/면·파스타/);
   await page.locator('#languageSelect').selectOption('ja');

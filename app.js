@@ -1,5 +1,5 @@
 import { createCommunityBackend } from './community-backend.js?v=20261115-media-failover';
-import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-nine-languages';
+import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-clean-social-v2';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const config = window.HANIP_CONFIG;
