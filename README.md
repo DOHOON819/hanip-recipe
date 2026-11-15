@@ -34,6 +34,14 @@ This is a static site with no build step. Serve the project folder with any stat
 
 The project URL remains unchanged; the product name is now **Recipe Story**. Visitors can switch between English, 한국어, and 日本語, and their choice is remembered in the browser.
 
+## Search visibility
+
+- Google Search Console ownership verification file: `google6bf2038a52595488.html` (keep this file deployed)
+- Canonical URL: `https://dohoon819.github.io/hanip-recipe/`
+- XML sitemap: `https://dohoon819.github.io/hanip-recipe/sitemap.xml`
+- Crawl guidance: `robots.txt`
+- Search result metadata: descriptive title/summary, Open Graph, Twitter Card, and `WebSite` structured data
+
 ## Tests
 
 Install a test dependency without changing the static app:

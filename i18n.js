@@ -120,9 +120,9 @@ Object.assign(ja, {
 
 const dictionaries = { en: {}, ko, ja };
 const meta = {
-  en: { title: 'Recipe Story — Good food. Worth sharing.', description: 'Good food, worth sharing. Discover recipes in photos and videos, save your favorites, and share what you love to cook. Welcome to Recipe Story.', ogDescription: 'Your next favorite meal starts here. Discover, save, and share recipes from home kitchens.' },
-  ko: { title: 'Recipe Story — 맛있는 이야기를 나눠요.', description: '사진과 영상으로 레시피를 발견하고, 저장하고, 내가 좋아하는 요리를 나눠보세요. Recipe Story에 오신 것을 환영합니다.', ogDescription: '다음 최애 메뉴는 여기서 시작돼요. 집밥 레시피를 발견하고 저장하고 공유하세요.' },
-  ja: { title: 'Recipe Story — おいしい物語をシェアしよう。', description: '写真や動画でレシピを見つけ、保存し、好きな料理をシェア。Recipe Storyへようこそ。', ogDescription: '次のお気に入りはここから。家庭のレシピを見つけて、保存して、シェアしよう。' }
+  en: { title: 'Recipe Story — Good food. Worth sharing.', description: 'Recipe Story is a free photo and video recipe-sharing app. Discover Korean, Japanese, Chinese, Mexican, American, French, Italian and easy home-cooking recipes.', ogDescription: 'Discover, save and share real home-cooking recipes with photos, videos and clear steps.' },
+  ko: { title: 'Recipe Story — 맛있는 이야기를 나눠요.', description: 'Recipe Story에서 사진과 영상으로 한식, 일식, 중식, 멕시칸, 아메리칸, 프렌치, 이탈리안과 간편 집밥 레시피를 발견하고 저장하고 공유하세요.', ogDescription: '사진, 영상과 쉬운 조리 순서로 진짜 집밥 레시피를 발견하고 저장하고 공유하세요.' },
+  ja: { title: 'Recipe Story — おいしい物語をシェアしよう。', description: 'Recipe Storyで写真や動画の韓国料理、日本料理、中華、メキシコ、アメリカ、フランス、イタリア料理と簡単な家庭料理レシピを見つけて保存・シェア。', ogDescription: '写真、動画、わかりやすい手順で家庭料理のレシピを見つけ、保存してシェアしよう。' }
 };
 
 function detectLanguage() {

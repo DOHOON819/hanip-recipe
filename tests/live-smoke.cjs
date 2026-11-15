@@ -17,6 +17,12 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     await page.goto(url, {waitUntil:'networkidle'});
     await page.waitForFunction(() => document.querySelector('#recipeGrid')?.getAttribute('aria-busy') === 'false');
     assert.equal(await page.title(), 'Recipe Story — Good food. Worth sharing.');
+    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://dohoon819.github.io/hanip-recipe/');
+    assert.match(await page.locator('meta[name="robots"]').getAttribute('content'), /index,follow/);
+    const verification = await page.evaluate(() => fetch('google6bf2038a52595488.html').then(response => response.text()));
+    assert.equal(verification.trim(), 'google-site-verification: google6bf2038a52595488.html');
+    const sitemap = await page.evaluate(() => fetch('sitemap.xml').then(response => response.text()));
+    assert.match(sitemap, /https:\/\/dohoon819\.github\.io\/hanip-recipe\//);
     assert.equal(await page.locator('#languageSelect').count(), 1);
     await page.locator('#languageSelect').selectOption('ko');
     assert.equal(await page.locator('html').getAttribute('lang'), 'ko');

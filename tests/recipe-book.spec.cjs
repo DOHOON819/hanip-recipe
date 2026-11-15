@@ -70,6 +70,15 @@ function mockBackend() {
   await page.locator('.recipe-card').first().waitFor();
   assert.equal(await page.title(),'Recipe Story — Good food. Worth sharing.');
   assert.equal((await page.locator('.brand').innerText()).trim(),'Recipe Story.');
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),'https://dohoon819.github.io/hanip-recipe/');
+  assert.match(await page.locator('meta[name="robots"]').getAttribute('content'),/index,follow/);
+  const structuredData=JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
+  assert.equal(structuredData.name,'Recipe Story');
+  assert.deepEqual(structuredData.inLanguage,['en','ko','ja']);
+  const seoFiles=await page.evaluate(async()=>({verification:await fetch('google6bf2038a52595488.html').then(r=>r.text()),sitemap:await fetch('sitemap.xml').then(r=>r.text()),robots:await fetch('robots.txt').then(r=>r.text())}));
+  assert.equal(seoFiles.verification.trim(),'google-site-verification: google6bf2038a52595488.html');
+  assert.match(seoFiles.sitemap,/https:\/\/dohoon819\.github\.io\/hanip-recipe\//);
+  assert.match(seoFiles.robots,/Sitemap: https:\/\/dohoon819\.github\.io\/hanip-recipe\/sitemap\.xml/);
   assert.equal(await page.locator('#languageSelect').count(),1);
   await page.locator('#languageSelect').selectOption('ko');
   assert.equal(await page.locator('html').getAttribute('lang'),'ko');

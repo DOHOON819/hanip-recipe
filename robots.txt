@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /hanip-recipe/
+
+Sitemap: https://dohoon819.github.io/hanip-recipe/sitemap.xml
