@@ -1,6 +1,6 @@
-# Recipe Book
+# Recipe Story
 
-An English-first, mobile-friendly recipe-sharing app with a vivid citrus-and-forest identity and an original Recipe Book logo. The community feed contains only real user submissions—no invented launch posts.
+An English-, Korean-, and Japanese-ready mobile recipe-sharing app with a vivid citrus-and-forest identity and an original Recipe Story logo. The community feed contains only real user submissions—no invented launch posts.
 
 ## Experience
 
@@ -32,7 +32,7 @@ This is a static site with no build step. Serve the project folder with any stat
 - GitHub Pages: https://dohoon819.github.io/hanip-recipe/
 - Existing Vercel address: https://hanip-recipe.vercel.app/
 
-The project URL remains unchanged; the product name is now **Recipe Book**.
+The project URL remains unchanged; the product name is now **Recipe Story**. Visitors can switch between English, 한국어, and 日本語, and their choice is remembered in the browser.
 
 ## Tests
 
@@ -54,4 +54,4 @@ For a read-only production smoke test, run `node tests/live-smoke.cjs https://do
 
 ## Artwork
 
-The hero, link-preview image, favicon and interface icons are original code-native Recipe Book artwork. See [asset notes](assets/README.md).
+The hero, link-preview image, favicon and interface icons are original code-native Recipe Story artwork. See [asset notes](assets/README.md).

@@ -16,7 +16,14 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     page.on('response', response => { if (response.status() >= 400 && /\.(js|css|jpg|svg)(\?|$)/.test(response.url())) failedAssets.push(response.url() + ' ' + response.status()); });
     await page.goto(url, {waitUntil:'networkidle'});
     await page.waitForFunction(() => document.querySelector('#recipeGrid')?.getAttribute('aria-busy') === 'false');
-    assert.equal(await page.title(), 'Recipe Book — Good food. Worth sharing.');
+    assert.equal(await page.title(), 'Recipe Story — Good food. Worth sharing.');
+    assert.equal(await page.locator('#languageSelect').count(), 1);
+    await page.locator('#languageSelect').selectOption('ko');
+    assert.equal(await page.locator('html').getAttribute('lang'), 'ko');
+    assert.match(await page.locator('#heroTitle').innerText(), /맛있는 음식/);
+    await page.locator('#languageSelect').selectOption('ja');
+    assert.equal(await page.locator('html').getAttribute('lang'), 'ja');
+    assert.match(await page.locator('#heroTitle').innerText(), /おいしい料理/);
     const feedAvailable = !(await page.locator('#retryButton').isVisible());
     if (!process.env.RECIPE_BOOK_ALLOW_FEED_FAILURE) assert.equal(feedAvailable, true, 'Production feed is unavailable');
     assert.equal(await page.locator('.hero-visual img').evaluate(image => image.complete && image.naturalWidth > 0), true);

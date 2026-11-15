@@ -156,7 +156,7 @@ export function createCommunityBackend(config) {
     },
     async deleteRecipe(recipe) {
       const community = recipe._community; if (!community || recipe.author_id !== pubkey) throw new Error('Only the creator can delete this recipe.');
-      const event = sign({ kind: DELETE_KIND, created_at: now(), tags: [['e', community.eventId], ['a', community.coordinate], ['k', String(RECIPE_KIND)], ['t', appTag(config)]], content: 'Deleted from Recipe Book' });
+      const event = sign({ kind: DELETE_KIND, created_at: now(), tags: [['e', community.eventId], ['a', community.coordinate], ['k', String(RECIPE_KIND)], ['t', appTag(config)]], content: 'Deleted from Recipe Story' });
       await publishRelays(relays, event); await Promise.allSettled([this.removeUpload(community.media?.image), this.removeUpload(community.media?.video)]);
     }
   };

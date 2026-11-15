@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
-  <title id="title">Recipe Book logo</title>
-  <desc id="desc">An open book mark above the Recipe Book wordmark on a vivid citrus background.</desc>
+  <title id="title">Recipe Story logo</title>
+  <desc id="desc">An open book mark above the Recipe Story wordmark on a vivid citrus background.</desc>
   <rect width="1200" height="800" fill="#d9ff52"/>
   <circle cx="104" cy="108" r="9" fill="#ff6f4c"/>
   <circle cx="1090" cy="680" r="13" fill="#ff6f4c"/>
@@ -12,7 +12,7 @@
     <path d="M490 226h54M490 267h54M656 226h54M656 267h54"/>
   </g>
   <text x="600" y="525" text-anchor="middle" fill="#123c31" font-family="Georgia, 'Times New Roman', serif" font-size="96" letter-spacing="-3">Recipe</text>
-  <text x="600" y="616" text-anchor="middle" fill="#123c31" font-family="Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="-4">Book<tspan fill="#ff5d3b">.</tspan></text>
+  <text x="600" y="616" text-anchor="middle" fill="#123c31" font-family="Arial, sans-serif" font-size="86" font-weight="800" letter-spacing="-4">Story<tspan fill="#ff5d3b">.</tspan></text>
   <path d="M465 666h270" stroke="#123c31" stroke-opacity=".35" stroke-width="2"/>
   <text x="600" y="716" text-anchor="middle" fill="#123c31" font-family="Arial, sans-serif" font-size="20" font-weight="800" letter-spacing="6">GOOD FOOD · WORTH SHARING</text>
 </svg>

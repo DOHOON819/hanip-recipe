@@ -18,7 +18,7 @@ const server = http.createServer((request, response) => {
   const page = await browser.newPage({ viewport:{ width:1280, height:900 } }); const stamp = Date.now(); const diagnostics = []; const mediaKind = process.env.RECIPE_BOOK_MEDIA || 'photo';
   page.on('console', (message) => { if (message.type() === 'error') diagnostics.push(message.text()); });
   page.on('requestfailed', (request) => diagnostics.push(`${request.method()} ${request.url()} — ${request.failure()?.errorText}`));
-  const title = `Recipe Book ${mediaKind} check ${stamp}`; const name = `Test Kitchen ${stamp}`;
+  const title = `Recipe Story ${mediaKind} check ${stamp}`; const name = `Test Kitchen ${stamp}`;
   page.on('dialog', (dialog) => dialog.accept());
   await page.goto(`http://127.0.0.1:${server.address().port}`, { waitUntil:'domcontentloaded', timeout:30000 });
   await page.waitForFunction(() => document.querySelector('#recipeGrid')?.getAttribute('aria-busy') === 'false', null, { timeout:25000 });
@@ -31,7 +31,7 @@ const server = http.createServer((request, response) => {
     const bytes = await page.evaluate(async () => {
       const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 180; const context = canvas.getContext('2d'); const stream = canvas.captureStream(12);
       const recorder = new MediaRecorder(stream, { mimeType:'video/webm' }); const chunks = []; recorder.ondataavailable = (event) => chunks.push(event.data);
-      recorder.start(); context.fillStyle = '#173f35'; context.fillRect(0, 0, 320, 180); context.fillStyle = '#f7f3e8'; context.font = 'bold 34px sans-serif'; context.fillText('Recipe Book', 54, 98);
+      recorder.start(); context.fillStyle = '#173f35'; context.fillRect(0, 0, 320, 180); context.fillStyle = '#f7f3e8'; context.font = 'bold 34px sans-serif'; context.fillText('Recipe Story', 45, 98);
       await new Promise((resolve) => setTimeout(resolve, 650)); const stopped = new Promise((resolve) => { recorder.onstop = resolve; }); recorder.stop(); await stopped;
       return [...new Uint8Array(await new Blob(chunks, { type:'video/webm' }).arrayBuffer())];
     });
