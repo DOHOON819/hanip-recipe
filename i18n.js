@@ -1,7 +1,9 @@
 import { EXTRA_DICTIONARIES, EXTRA_META } from './i18n-extra.js?v=20261115-nine-languages';
+import { SOCIAL_DICTIONARIES } from './i18n-social.js?v=20261115-shorts-v1';
+import { FEEDBACK_DICTIONARIES, FEEDBACK_ALIASES } from './i18n-feedback.js?v=20261115-shorts-v1';
 
 const STORAGE_KEY = 'recipe-story:language:v1';
-const SUPPORTED = ['en', 'ko', 'ja', 'fr', 'it', 'hi', 'es-MX', 'zh-CN', 'ar'];
+const SUPPORTED = ['en', 'en-AU', 'ko', 'ja', 'fr', 'it', 'hi', 'es-MX', 'zh-CN', 'ar'];
 
 const ko = {
   'Skip to recipes': '레시피로 바로가기', 'Discover': '홈', 'Watch & cook': '영상 레시피', 'My recipe book': '저장한 레시피',
@@ -121,12 +123,16 @@ Object.assign(ja, {
 });
 
 const dictionaries = { en: {}, ko, ja, ...EXTRA_DICTIONARIES };
+for (const [locale, values] of Object.entries(FEEDBACK_DICTIONARIES)) Object.assign(dictionaries[locale], values);
+for (const [locale, values] of Object.entries(SOCIAL_DICTIONARIES)) dictionaries[locale] = { ...dictionaries[locale], ...values };
+for (const locale of Object.keys(FEEDBACK_DICTIONARIES)) for (const [key, alias] of Object.entries(FEEDBACK_ALIASES)) dictionaries[locale][key] = dictionaries[locale][alias];
 const meta = {
   en: { title: 'Recipe Story — Good food. Worth sharing.', description: 'Recipe Story is a free photo and video recipe-sharing app. Discover Korean, Japanese, Chinese, Mexican, American, French, Italian and easy home-cooking recipes.', ogDescription: 'Discover, save and share real home-cooking recipes with photos, videos and clear steps.' },
   ko: { title: 'Recipe Story — 맛있는 레시피를 함께 나눠요.', description: 'Recipe Story에서 사진과 영상으로 한식, 일식, 중식, 멕시칸, 아메리칸, 프렌치, 이탈리안과 간편 집밥 레시피를 발견하고 저장하고 공유하세요.', ogDescription: '사진, 영상과 쉬운 조리 순서로 집밥 레시피를 발견하고 저장하고 공유하세요.' },
   ja: { title: 'Recipe Story — おいしい物語をシェアしよう。', description: 'Recipe Storyで写真や動画の韓国料理、日本料理、中華、メキシコ、アメリカ、フランス、イタリア料理と簡単な家庭料理レシピを見つけて保存・シェア。', ogDescription: '写真、動画、わかりやすい手順で家庭料理のレシピを見つけ、保存してシェアしよう。' },
   ...EXTRA_META
 };
+meta['en-AU'] = meta.en;
 
 function detectLanguage() {
   try { const stored = localStorage.getItem(STORAGE_KEY); if (SUPPORTED.includes(stored)) return stored; } catch { /* English remains available when storage is blocked. */ }
@@ -160,7 +166,8 @@ function translateExact(value) {
 
 export function applyTranslations(root = document) {
   document.documentElement.lang = language;
-  document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+  // Preserve navigation and layout positions. Arabic paragraphs keep their text direction.
+  document.documentElement.dir = 'ltr';
   document.title = meta[language].title;
   document.querySelector('meta[name="description"]')?.setAttribute('content', meta[language].description);
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', meta[language].title);

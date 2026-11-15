@@ -25,6 +25,7 @@ const server = http.createServer((request, response) => {
   await page.locator('#openComposer').click();
   await page.locator('#authorName').fill(name); await page.locator('#recipeTitle').fill(title); await page.locator('#recipeDescription').fill('Temporary end-to-end check. Removed automatically.');
   await page.locator('#recipeCategory').selectOption('간편식'); await page.locator('#cookMinutes').fill('5'); await page.locator('#servings').fill('1');
+  await page.locator('#recipeCuisine').selectOption('Other cuisine'); await page.locator('#difficulty').selectOption('쉬움');
   await page.locator('#composerNext').click(); await page.locator('[data-item]').fill('A working connection'); await page.locator('[data-quantity]').fill('1'); await page.locator('#steps textarea').fill('Publish, share, verify and remove.');
   await page.locator('#composerNext').click();
   if (mediaKind === 'video') {
@@ -35,7 +36,7 @@ const server = http.createServer((request, response) => {
       await new Promise((resolve) => setTimeout(resolve, 650)); const stopped = new Promise((resolve) => { recorder.onstop = resolve; }); recorder.stop(); await stopped;
       return [...new Uint8Array(await new Blob(chunks, { type:'video/webm' }).arrayBuffer())];
     });
-    await page.locator('[data-media-mode="video"]').click(); await page.locator('#videoFile').setInputFiles({ name:'recipe-book-check.webm', mimeType:'video/webm', buffer:Buffer.from(bytes) });
+    await page.locator('[data-media-mode="video"]').click(); await page.locator('#videoFile').setInputFiles({ name:'recipe-book-check.webm', mimeType:'video/webm', buffer:Buffer.from(bytes) }); await page.locator('#mediaPreview video').waitFor();
   } else await page.locator('#imageFile').setInputFiles(path.join(root, 'assets', 'recipe-book-logo.png'));
   await page.locator('#publishButton').click();
   try {

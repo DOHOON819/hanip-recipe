@@ -1,19 +1,24 @@
 # Recipe Story
 
-An English-, Korean-, and Japanese-ready mobile recipe-sharing app with a vivid citrus-and-forest identity and an original Recipe Story logo. The community feed contains only real user submissions—no invented launch posts.
+A multilingual recipe-sharing app with a sage-and-beige palette. The community feed contains real user submissions. Advertising is intentionally deferred.
 
 ## Experience
 
 - Discover all recipes, videos, photos or your saved collection.
-- Browse Korean, Japanese, Chinese, Mexican, American, French, Italian, Indian, brunch, lunchbox, quick, pasta, vegetarian, dessert and drink categories.
+- Open **Shorts** to swipe vertically through videos, photos and text recipes. Only the visible video plays, muted initially; comments, recipe details and background tabs pause playback. Touch scrolling, keyboard navigation, sound and native playback controls are available.
+- Portrait and landscape viewing use sage/beige margins and uncropped media. The full ingredients and cooking method remain one tap away.
+- Public hearts, likes/dislikes and comments are shared between visitors. Hearts are independent; like/dislike are mutually exclusive and can be withdrawn. Comment authors can delete their own comments. Failed writes preserve the draft and do not increment counts.
+- Browse Korean, Japanese, Chinese, Mexican, American, French, Italian, Indian, Arab and Australian cuisines, alongside brunch, lunchbox, quick meals, pasta, vegetarian, desserts and drinks.
 - Combine ingredient/title search with category, cooking-time and difficulty filters; sort by newest or quickest.
 - Explore quick meals, noodles & pasta, desserts, or a random matching recipe.
 - Save favorites **on the current browser/device**. Bookmarks do not sync between devices.
 - Read ingredients and instructions as a cooking checklist.
 - Share through three short steps: basics, recipe, then an optional photo or video.
+- Every new recipe requires a creator name, title, country/cuisine, category, difficulty, time, servings, a 20–2,000-character description, ingredients with amounts and detailed cooking steps. Older recipes remain readable.
 - Upload JPG/PNG/WebP photos up to 10 MB, or MP4/WebM/MOV videos up to 100 MB. Playback depends on the browser's codec support.
 - Choose full-bleed or uncropped photo framing.
 - Claim or rename a unique creator name without a visible sign-up/login flow.
+- The name control is visible beside the language selector. Arabic text does not mirror navigation or the app layout.
 
 ## Identity and data
 
@@ -23,7 +28,9 @@ Creator names are checked case-insensitively against current community profiles 
 
 Photos and videos are uploaded with signed HTTP authorization to the configured public media service. The current free tier supports JPG/PNG/WebP up to 10 MB in the interface and MP4/WebM/MOV up to 100 MB. Recipe events are replicated to the relays configured in `config.js`; media is removed on creator deletion when the host accepts the cleanup request.
 
-The historical Supabase implementation and migrations remain available as a fallback/reference under `supabase/`. `config.js` contains only browser-safe public settings. Never put a secret/service-role key in browser code.
+The historical Supabase implementation and migrations remain as reference under `supabase/`. New social features use the community backend configured in production. `config.js` contains only browser-safe public settings. Never put a secret/service-role key in browser code.
+
+Shared recipe URLs query the exact signed recipe ID, so they can open posts outside the newest-feed window. Reactions use addressable events per recipe and visitor, comments use signed events, and deletion targets are checked against their author. Open interaction panels refresh every 15 seconds while the page is visible. Relay failures show retry feedback instead of a false empty success. Public relays and media hosts are third-party services: permanent hosting is not guaranteed. Keep originals of important uploads.
 
 ## Run and deploy
 
@@ -32,7 +39,7 @@ This is a static site with no build step. Serve the project folder with any stat
 - GitHub Pages: https://dohoon819.github.io/hanip-recipe/
 - Existing Vercel address: https://hanip-recipe.vercel.app/
 
-The project URL remains unchanged; the product name is now **Recipe Story**. Visitors can switch between English, 한국어, and 日本語, and their choice is remembered in the browser.
+The project URL remains unchanged; the product name is **Recipe Story**. Visitors can choose English, English (Australia), 한국어, 日本語, Français, Italiano, हिन्दी, Español (México), 中文 or العربية. Their choice is remembered in the browser.
 
 ## Search visibility
 
@@ -47,14 +54,20 @@ The project URL remains unchanged; the product name is now **Recipe Story**. Vis
 Install a test dependency without changing the static app:
 
 ```sh
-npm install --no-save --package-lock=false playwright@1.62.1
+npm install --no-save --package-lock=false playwright@1.62.1 ws
 npx playwright install chromium
 node tests/recipe-book.spec.cjs
+node tests/social.spec.cjs
+node tests/translation-audit.cjs
 ```
 
 Optional environment variables: `RECIPE_BOOK_PLAYWRIGHT` (module path), `RECIPE_BOOK_BROWSER` (browser executable), `RECIPE_BOOK_TEST_OUTPUT` (screenshots, default `test-results/`).
 
 The main browser suite intercepts the backend and uploads with in-memory fixtures. It **does not create production posts or accounts**. It covers filters, local bookmarks, cooking checks, composer validation, media switching, draft publication/rollback, duplicate names, load-error recovery, sharing and mobile overflow.
+
+`tests/social.spec.cjs` uses an isolated local relay with real signed events and two independent browser identities. It verifies shared reactions/comments, ownership, escaped comment text, failure recovery, exact-ID links, actual video decoding, shorts navigation, mobile/landscape layouts, locales and required fields. `tests/translation-audit.cjs` checks dictionary coverage.
+
+For an explicitly opted-in infrastructure test, set `RECIPE_BOOK_LIVE=1` and run `node tests/community-social-live.cjs`. It uploads a short generated test video and tests cross-visitor delivery on the configured live services, under a separate test tag so it never appears in the normal feed. It deletes its temporary comment and recipe and checks their removal. `tests/public-media-audit.cjs` only reads and attempts playback of existing public videos.
 
 `tests/community-smoke.spec.cjs` checks the live public feed. `tests/community-publish.spec.cjs` performs an end-to-end photo or video publish, opens the shared deep link as a new visitor, and immediately deletes the clearly marked test recipe.
 

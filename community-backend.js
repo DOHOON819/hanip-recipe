@@ -23,25 +23,26 @@ function loadSecretKey() {
 }
 
 function queryRelay(url, filters, timeoutMs = 6500) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const events = []; const subscription = `rb-${crypto.randomUUID().slice(0, 8)}`; let settled = false;
     const socket = new WebSocket(url);
-    const finish = () => { if (settled) return; settled = true; window.clearTimeout(timer); try { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(['CLOSE', subscription])); socket.close(); } catch { /* Already closed. */ } resolve(events); };
-    const timer = window.setTimeout(finish, timeoutMs);
+    const finish = (complete = false) => { if (settled) return; settled = true; window.clearTimeout(timer); try { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(['CLOSE', subscription])); socket.close(); } catch { /* Already closed. */ } complete ? resolve(events) : reject(new Error('Connection lost. Check your internet connection and try again.')); };
+    const timer = window.setTimeout(() => finish(), timeoutMs);
     socket.addEventListener('open', () => socket.send(JSON.stringify(['REQ', subscription, ...filters])));
     socket.addEventListener('message', (message) => {
       try {
         const data = JSON.parse(message.data);
         if (data[0] === 'EVENT' && data[1] === subscription && verifyEvent(data[2])) events.push(data[2]);
-        if (data[0] === 'EOSE' && data[1] === subscription) finish();
+        if (data[0] === 'EOSE' && data[1] === subscription) finish(true);
       } catch { /* Ignore malformed relay messages. */ }
     });
-    socket.addEventListener('error', finish); socket.addEventListener('close', finish);
+    socket.addEventListener('error', () => finish()); socket.addEventListener('close', () => finish());
   });
 }
 
 async function queryRelays(relays, filters) {
   const results = await Promise.allSettled(relays.map((relay) => queryRelay(relay, filters)));
+  if (!results.some(result => result.status === 'fulfilled')) throw new Error('Connection lost. Check your internet connection and try again.');
   const unique = new Map();
   results.forEach((result) => { if (result.status === 'fulfilled') result.value.forEach((event) => unique.set(event.id, event)); });
   return [...unique.values()];
@@ -61,9 +62,8 @@ function publishRelay(url, event, timeoutMs = 7000) {
 }
 
 async function publishRelays(relays, event) {
-  const attempts = relays.map((relay) => publishRelay(relay, event));
-  try { await Promise.any(attempts); }
-  catch (error) { throw error?.errors?.[0] || new Error('The recipe community is temporarily unavailable.'); }
+  const attempts = await Promise.allSettled(relays.map((relay) => publishRelay(relay, event)));
+  if (!attempts.some(result => result.status === 'fulfilled')) throw new Error('Connection lost. Check your internet connection and try again.');
   return event;
 }
 
@@ -75,7 +75,7 @@ function safeRecipe(event, profiles) {
     if (!Array.isArray(value.recipe_ingredients) || !Array.isArray(value.recipe_steps)) return null;
     const media = value.media && typeof value.media === 'object' ? value.media : {};
     return {
-      id: event.id, author_id: event.pubkey, title: value.title, description: String(value.description || '').slice(0, 600), category,
+      id: event.id, author_id: event.pubkey, title: value.title, description: String(value.description || '').slice(0, 2000), category, cuisine: String(value.cuisine || ''),
       cook_minutes: value.cook_minutes, servings: Number(value.servings) || 1, difficulty: String(value.difficulty || '쉬움'),
       video_url: media.video?.url || null, image_url: media.image?.url || null, image_fit: value.image_fit === 'contain' ? 'contain' : 'cover',
       created_at: new Date(event.created_at * 1000).toISOString(), profiles: { display_name: profiles.get(event.pubkey) || String(value.author_name || 'Home cook') },
@@ -95,7 +95,8 @@ export function createCommunityBackend(config) {
   const relays = config.communityRelays || ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.nostr.band'];
   const mediaUrls = config.communityMediaUrls || [config.communityMediaUrl || 'https://nostrage.com/api/v2/media', 'https://cdn.nostrcheck.me'];
   const sign = (template) => finalizeEvent(template, secretKey);
-  const profileFilter = { kinds: [PROFILE_KIND], '#t': [appTag(config)], limit: 500 };
+  const reactionTimes = new Map();
+  const profileFilter = { kinds: [PROFILE_KIND], '#d': ['recipe-book-profile'], '#t': [appTag(config)], limit: 500 };
 
   async function loadProfiles() {
     const events = await queryRelays(relays, [profileFilter]); const latest = new Map();
@@ -117,20 +118,71 @@ export function createCommunityBackend(config) {
       await publishRelays(relays, event); return name;
     },
     async loadRecipes() {
-      const events = await queryRelays(relays, [{ kinds: [PROFILE_KIND, RECIPE_KIND, DELETE_KIND], '#t': [appTag(config)], limit: 500 }]);
+      const events = await queryRelays(relays, [profileFilter, { kinds: [RECIPE_KIND], '#t': [appTag(config)], limit: 500 }, { kinds: [DELETE_KIND], '#t': [appTag(config)], '#k': [String(RECIPE_KIND)], limit: 1000 }]);
       const profileEvents = events.filter((event) => event.kind === PROFILE_KIND && tagValue(event, 'd') === 'recipe-book-profile');
       const profileLatest = new Map(); profileEvents.forEach((event) => { const previous = profileLatest.get(event.pubkey); if (!previous || previous.created_at < event.created_at) profileLatest.set(event.pubkey, event); });
       const profiles = new Map(); profileLatest.forEach((event, author) => { try { profiles.set(author, JSON.parse(event.content).displayName); } catch { /* Ignore invalid profiles. */ } });
       const deletedIds = new Set(); const deletedCoordinates = new Set();
       events.filter((event) => event.kind === DELETE_KIND).forEach((event) => { event.tags.forEach((tag) => { if (tag[0] === 'e') deletedIds.add(`${event.pubkey}:${tag[1]}`); if (tag[0] === 'a') deletedCoordinates.add(`${event.pubkey}:${tag[1]}`); }); });
-      return events.filter((event) => event.kind === RECIPE_KIND && !deletedIds.has(`${event.pubkey}:${event.id}`) && !deletedCoordinates.has(`${event.pubkey}:${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}`)).map((event) => safeRecipe(event, profiles)).filter(Boolean);
+      return events.filter((event) => event.kind === RECIPE_KIND && tagValue(event, 't') === appTag(config) && !deletedIds.has(`${event.pubkey}:${event.id}`) && !deletedCoordinates.has(`${event.pubkey}:${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}`)).map((event) => safeRecipe(event, profiles)).filter(Boolean);
+    },
+    async loadRecipe(id) {
+      if (!/^[0-9a-f]{64}$/.test(id)) return null;
+      const events = await queryRelays(relays, [{ ids: [id], kinds: [RECIPE_KIND] }]);
+      const event = events.find(item => item.id === id && tagValue(item, 't') === appTag(config));
+      if (!event) return null;
+      const coordinate = `${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}`;
+      const related = await queryRelays(relays, [
+        { kinds: [DELETE_KIND], authors: [event.pubkey], '#e': [id], '#k': [String(RECIPE_KIND)] },
+        { kinds: [DELETE_KIND], authors: [event.pubkey], '#a': [coordinate], '#k': [String(RECIPE_KIND)] },
+        { kinds: [PROFILE_KIND], authors: [event.pubkey], '#d': ['recipe-book-profile'], '#t': [appTag(config)] }
+      ]);
+      if (related.some(item => item.kind === DELETE_KIND && item.pubkey === event.pubkey && item.tags.some(tag => (tag[0] === 'e' && tag[1] === id) || (tag[0] === 'a' && tag[1] === coordinate && item.created_at >= event.created_at)))) return null;
+      const profile = related.filter(item => item.kind === PROFILE_KIND).sort((a,b) => b.created_at-a.created_at)[0];
+      const profiles = new Map(); try { if (profile) profiles.set(event.pubkey, JSON.parse(profile.content).displayName); } catch { /* Use recipe byline. */ }
+      return safeRecipe(event, profiles);
+    },
+    async loadSocial(recipeId) {
+      const events = await queryRelays(relays, [{ kinds: [PROFILE_KIND, 1], '#t': [appTag(config)], '#e': [recipeId], limit: 2000 }, { kinds: [DELETE_KIND], '#t': [appTag(config)], '#r': [recipeId], limit: 2000 }]);
+      const latest = new Map(); const comments = []; const deleted = new Set();
+      for (const event of events) if (event.kind === DELETE_KIND) for (const tag of event.tags) if (tag[0] === 'e') deleted.add(`${event.pubkey}:${tag[1]}`);
+      for (const event of events) {
+        if (!event.tags.some(tag => tag[0] === 'e' && tag[1] === recipeId) || tagValue(event, 't') !== appTag(config)) continue;
+        try {
+          const value = JSON.parse(event.content);
+          if (event.kind === PROFILE_KIND && tagValue(event, 'd') === `recipe-reaction:${recipeId}` && typeof value.heart === 'boolean' && [-1,0,1].includes(value.vote)) {
+            const old = latest.get(event.pubkey);
+            if (!old || old.created_at < event.created_at || (old.created_at === event.created_at && event.id < old.id)) latest.set(event.pubkey, { ...value, id: event.id, created_at: event.created_at });
+          }
+          if (event.kind === 1 && value.type === 'recipe-comment' && typeof value.body === 'string' && value.body.trim() && value.body.length <= 1000 && !deleted.has(`${event.pubkey}:${event.id}`)) comments.push({ id: event.id, author_id: event.pubkey, name: String(value.name || 'Home cook').slice(0,40), body: value.body, created_at: event.created_at });
+        } catch { /* Ignore unrelated or malformed events. */ }
+      }
+      const mine = latest.get(pubkey) || { heart: false, vote: 0 };
+      reactionTimes.set(recipeId, Math.max(reactionTimes.get(recipeId) || 0, mine.created_at || 0));
+      return { hearts: [...latest.values()].filter(v => v.heart).length, likes: [...latest.values()].filter(v => v.vote === 1).length, dislikes: [...latest.values()].filter(v => v.vote === -1).length, mine, comments: comments.sort((a,b) => a.created_at-b.created_at || a.id.localeCompare(b.id)) };
+    },
+    async react(recipeId, value) {
+      if (!/^[0-9a-f]{64}$/.test(recipeId) || typeof value.heart !== 'boolean' || ![-1,0,1].includes(value.vote)) throw new Error('Invalid reaction.');
+      // Addressable events replace the previous vote. Avoid same-second ties on rapid taps.
+      const timestamp = Math.max(now(), (reactionTimes.get(recipeId) || 0) + 1);
+      const event = sign({ kind: PROFILE_KIND, created_at: timestamp, tags: [['d', `recipe-reaction:${recipeId}`], ['t', appTag(config)], ['e', recipeId]], content: JSON.stringify({ heart: value.heart, vote: value.vote }) });
+      await publishRelays(relays, event); reactionTimes.set(recipeId, timestamp);
+    },
+    async addComment(recipeId, body, name) {
+      body = String(body || '').trim(); name = String(name || '').trim();
+      if (!/^[0-9a-f]{64}$/.test(recipeId) || !body || body.length > 1000 || name.length < 2 || name.length > 40) throw new Error('Check your name and comment.');
+      return publishRelays(relays, sign({ kind: 1, created_at: now(), tags: [['t', appTag(config)], ['e', recipeId]], content: JSON.stringify({ type: 'recipe-comment', body, name }) }));
+    },
+    async deleteComment(recipeId, comment) {
+      if (comment.author_id !== pubkey) throw new Error('Only the author can delete this comment.');
+      return publishRelays(relays, sign({ kind: DELETE_KIND, created_at: now(), tags: [['e', comment.id], ['r', recipeId], ['k', '1'], ['t', appTag(config)]], content: 'Deleted comment' }));
     },
     async upload(file, kind, onProgress) {
       if (file.size > 100 * 1024 * 1024) throw new Error('Community uploads currently support files up to 100 MB.');
       const hash = bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer())));
       let lastError = null;
       for (const [index, mediaUrl] of mediaUrls.entries()) {
-        const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 30000);
+        const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 120000);
         try {
           const auth = sign({ kind: 27235, created_at: now(), tags: [['u', mediaUrl], ['method', 'POST']], content: '' });
           const form = new FormData(); form.append('file', file); form.append('size', String(file.size)); form.append('content_type', file.type); form.append('alt', `Recipe ${kind}`);
@@ -148,9 +200,12 @@ export function createCommunityBackend(config) {
     async removeUpload(media) {
       if (!media?.hash) return;
       const url = `${media.server || mediaUrls[0]}/${media.hash}`; const auth = sign({ kind: 27235, created_at: now(), tags: [['u', url], ['method', 'DELETE']], content: '' });
-      try { await fetch(url, { method: 'DELETE', headers: { Authorization: encodeAuthorization(auth) } }); } catch { /* Recipe deletion remains successful even if media cleanup is delayed. */ }
+      const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 15000);
+      try { await fetch(url, { method: 'DELETE', headers: { Authorization: encodeAuthorization(auth) }, signal: controller.signal }); } catch { /* Recipe deletion remains successful even if media cleanup is delayed. */ }
+      finally { window.clearTimeout(timeout); }
     },
     async publishRecipe(value) {
+      if (typeof value.title !== 'string' || value.title.trim().length < 2 || value.title.length > 80 || typeof value.description !== 'string' || value.description.trim().length < 20 || value.description.length > 2000 || !value.cuisine || !value.category || !['쉬움','보통','어려움'].includes(value.difficulty) || !value.author_name?.trim() || !Number.isInteger(value.cook_minutes) || value.cook_minutes < 1 || value.cook_minutes > 600 || !Number.isInteger(value.servings) || value.servings < 1 || value.servings > 50 || !value.recipe_ingredients?.length || value.recipe_ingredients.length > 40 || value.recipe_ingredients.some(item => !item.item?.trim() || !item.quantity?.trim()) || !value.recipe_steps?.length || value.recipe_steps.length > 40 || value.recipe_steps.some(step => typeof step !== 'string' || step.trim().length < 10 || step.length > 500)) throw new Error('Complete all required recipe fields.');
       const d = crypto.randomUUID(); const event = sign({ kind: RECIPE_KIND, created_at: now(), tags: [['d', d], ['t', appTag(config)], ['title', value.title], ['published_at', String(now())]], content: JSON.stringify(value) });
       return publishRelays(relays, event);
     },

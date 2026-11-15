@@ -74,7 +74,7 @@ function mockBackend() {
   assert.match(await page.locator('meta[name="robots"]').getAttribute('content'),/index,follow/);
   const structuredData=JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
   assert.equal(structuredData.name,'Recipe Story');
-  assert.deepEqual(structuredData.inLanguage,['en','ko','ja','fr','it','hi','es-MX','zh-CN','ar']);
+  assert.deepEqual(structuredData.inLanguage,['en','en-AU','ko','ja','fr','it','hi','es-MX','zh-CN','ar']);
   const seoFiles=await page.evaluate(async()=>({verification:await fetch('google6bf2038a52595488.html').then(r=>r.text()),sitemap:await fetch('sitemap.xml').then(r=>r.text()),robots:await fetch('robots.txt').then(r=>r.text())}));
   assert.equal(seoFiles.verification.trim(),'google-site-verification: google6bf2038a52595488.html');
   assert.match(seoFiles.sitemap,/https:\/\/dohoon819\.github\.io\/hanip-recipe\//);
@@ -97,7 +97,7 @@ function mockBackend() {
   assert.equal(await page.locator('html').getAttribute('lang'),'ja');
   await page.locator('#languageSelect').selectOption('en');
   assert.equal(await page.locator('.recipe-card').count(),3);
-  assert.equal(await page.locator('#recipeCategory option').count(),16);
+  assert.equal(await page.locator('#recipeCategory option').count(),19);
   for (const category of ['일식','중식','멕시칸','아메리칸','프렌치','이탈리안','브런치','도시락','간편식']) assert.equal(await page.locator(`#recipeCategory option[value="${category}"]`).count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
@@ -143,6 +143,10 @@ function mockBackend() {
   await page.locator('#composerNext').click();
   assert.match(await page.locator('#recipeMessage').innerText(),/title/);
   await page.locator('#recipeTitle').fill('My test recipe');
+  await page.locator('#recipeDescription').fill('A complete recipe description with preparation and serving tips.');
+  await page.locator('#recipeCuisine').selectOption('Italian');
+  await page.locator('#recipeCategory').selectOption('면·파스타');
+  await page.locator('#difficulty').selectOption('쉬움');
   await page.locator('#cookMinutes').fill('0');
   await page.locator('#composerNext').click();
   assert.match(await page.locator('#recipeMessage').innerText(),/600/);
@@ -157,7 +161,8 @@ function mockBackend() {
   await page.locator('[data-media-mode="video"]').click();
   assert.equal(await page.locator('#mediaPreview img').count(),0);
   await page.locator('#videoFile').setInputFiles({name:'test.webm',mimeType:'video/webm',buffer:Buffer.from('test-video')});
-  assert.equal(await page.locator('#mediaPreview video').count(),1);
+  await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('cannot be played'));
+  assert.equal(await page.locator('#mediaPreview video').count(),0,'invalid video must not be accepted');
   await page.locator('[data-media-mode="none"]').click();
   assert.equal(await page.locator('#mediaPreview video').count(),0);
   await page.locator('#publishButton').click();
@@ -169,8 +174,13 @@ function mockBackend() {
   // Backend failure must not leave an incomplete public recipe.
   await page.locator('#openComposer').click();
   await page.locator('#recipeTitle').fill('Failure test');
+  await page.locator('#recipeDescription').fill('A complete description for a failed publication test.');
+  await page.locator('#recipeCuisine').selectOption('Italian');
+  await page.locator('#recipeCategory').selectOption('면·파스타');
+  await page.locator('#difficulty').selectOption('쉬움');
   await page.locator('#composerNext').click();
   await page.locator('[data-item]').fill('Basil');
+  await page.locator('[data-quantity]').fill('2 leaves');
   await page.locator('#steps textarea').fill('Tear the leaves.');
   await page.locator('#composerNext').click();
   await page.locator('#imageFile').setInputFiles(path.join(root,'assets/recipe-book-logo.png'));
