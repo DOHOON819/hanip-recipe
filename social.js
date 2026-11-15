@@ -1,4 +1,4 @@
-import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261115-shorts-v1';
+import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261115-recent-v1';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url = value => { try { const u = new URL(value); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
@@ -96,7 +96,11 @@ export function createSocialExperience(api) {
   function activate(slide) {
     if (current === slide) return;
     pause(); current = slide; userPaused = false;
-    if (current) { playCurrent(); load(current.dataset.shortId).catch(() => {}); }
+    if (current) {
+      playCurrent(); load(current.dataset.shortId).catch(() => {});
+      const recipe = shortsRecipes.find(item => item.id === current.dataset.shortId);
+      if (recipe) api.onView?.(recipe);
+    }
     const position = shortsRecipes.findIndex(r => r.id === current?.dataset.shortId);
     document.querySelector('[data-short-step="-1"]').disabled = position <= 0;
     document.querySelector('[data-short-step="1"]').disabled = position < 0 || position >= shortsRecipes.length - 1;

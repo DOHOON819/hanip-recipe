@@ -98,6 +98,50 @@ function mockBackend() {
   await page.locator('#languageSelect').selectOption('en');
   assert.equal(await page.locator('.recipe-card').count(),3);
   assert.equal(await page.locator('#recipeCategory option').count(),19);
+  const categoryOrder=await page.locator('.category-nav [data-category]').evaluateAll(buttons=>buttons.map(button=>button.dataset.category));
+  assert.deepEqual(categoryOrder.slice(categoryOrder.indexOf('인도식'),categoryOrder.indexOf('인도식')+4),['인도식','아랍식','호주식','브런치']);
+  assert.equal(new Set(categoryOrder).size,categoryOrder.length);
+  await page.locator('[data-media-filter="recent"]').click();
+  assert.equal(await page.locator('.recipe-card').count(),0);
+  assert.match(await page.locator('#emptyTitle').innerText(),/recently viewed/);
+  await page.locator('[data-media-filter="all"]').click();
+  for(const id of ['photo-one','dessert-one','photo-one']) {
+    await page.locator('[data-recipe-id="'+id+'"]').first().click();
+    await page.locator('[data-close-dialog="detailDialog"]').click();
+  }
+  await page.locator('[data-media-filter="recent"]').click();
+  assert.equal(await page.locator('.recipe-card').count(),2);
+  assert.match(await page.locator('.recipe-card').first().innerText(),/Tomato/);
+  assert.equal(await page.locator('#sortFilter').isDisabled(),true);
+  await page.locator('[data-recipe-id="dessert-one"]').first().click();
+  await page.locator('[data-close-dialog="detailDialog"]').click();
+  assert.match(await page.locator('.recipe-card').first().innerText(),/Weekend/);
+  const historyBeforeLanguage=await page.evaluate(()=>localStorage.getItem('recipe-book:recent:v1'));
+  for(const language of ['ko','ja','fr','it','hi','es-MX','zh-CN','ar']) {
+    await page.locator('#languageSelect').selectOption(language);
+    assert.notEqual(await page.locator('[data-media-filter="recent"]').innerText(),'Recent');
+    assert.notEqual(await page.locator('#clearHistory').innerText(),'Clear viewing history');
+  }
+  assert.equal(await page.evaluate(()=>localStorage.getItem('recipe-book:recent:v1')),historyBeforeLanguage);
+  await page.locator('#languageSelect').selectOption('en');
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('[data-media-filter="recent"]').click();
+  assert.equal(await page.locator('.recipe-card').count(),2);
+  assert.match(await page.locator('.recipe-card').first().innerText(),/Weekend/);
+  await page.locator('[data-remove-history="photo-one"]').click();
+  assert.equal(await page.locator('.recipe-card').count(),1);
+  await page.locator('[data-save-id="dessert-one"]').click();
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.screenshot({path:path.join(out,'recent-mobile.png'),fullPage:true});
+  page.once('dialog',dialog=>dialog.accept());await page.locator('#clearHistory').click();
+  assert.equal(await page.locator('.recipe-card').count(),0);
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('recipe-book:recent:v1'))),[]);
+  await page.locator('[data-media-filter="saved"]').click();
+  assert.equal(await page.locator('.recipe-card').count(),1,'clearing history preserves bookmarks');
+  await page.locator('[data-save-id="dessert-one"]').click();
+  await page.setViewportSize({width:1440,height:1050});
+  await page.locator('[data-media-filter="all"]').click();
   for (const category of ['일식','중식','멕시칸','아메리칸','프렌치','이탈리안','브런치','도시락','간편식']) assert.equal(await page.locator(`#recipeCategory option[value="${category}"]`).count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});

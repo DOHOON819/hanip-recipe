@@ -1,6 +1,7 @@
-import { createCommunityBackend } from './community-backend.js?v=20261115-shorts-v1';
-import { createSocialExperience, checkVideo } from './social.js?v=20261115-shorts-v1';
-import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-shorts-v1';
+import { createCommunityBackend } from './community-backend.js?v=20261115-recent-v1';
+import { createSocialExperience, checkVideo } from './social.js?v=20261115-recent-v1';
+import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-recent-v1';
+import { createRecentHistory, RECENT_KEY } from './recent.js?v=20261115-recent-v1';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const config = window.HANIP_CONFIG;
@@ -26,16 +27,22 @@ const CATEGORY_LABELS = {
 };
 const DIFFICULTY_LABELS = { '쉬움': 'Easy', '보통': 'Medium', '어려움': 'Advanced' };
 const SAVED_KEY = 'recipe-book:saved:v1';
+let historyStorage; try { historyStorage = window.localStorage; } catch { historyStorage = null; }
+const recentHistory = createRecentHistory(historyStorage);
+let historyRecipes = null, historyLoading = false, historyError = false, historyRequest = 0, historyStorageWarned = false;
 const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'image', previewUrl: null, step: 1, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
 const elements = { composer: $('#composerDialog'), detail: $('#detailDialog'), form: $('#recipeForm'), grid: $('#recipeGrid'), status: $('#feedStatus'), empty: $('#emptyState'), search: $('#searchInput'), category: $('#categoryFilter'), time: $('#timeFilter'), difficulty: $('#difficultyFilter'), sort: $('#sortFilter'), message: $('#recipeMessage'), toast: $('#toast') };
 const community = config?.backend === 'community' && !window.__mockClient ? createCommunityBackend(config) : null;
 let supabase = null;
 if (!community && config?.supabaseUrl && config?.supabasePublishableKey) { const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'); supabase = createClient(config.supabaseUrl, config.supabasePublishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }); }
 const CUISINES = ['Korean','Japanese','Chinese','Mexican','American','French','Italian','Indian','Arab','Australian','Other cuisine'];
-const social = createSocialExperience({ backend: community, getRecipes: () => filteredRecipes(), getName: () => state.creatorName, getUser: () => state.session?.user?.id, openProfile: () => openProfile(), openRecipe: recipe => renderRecipeDetail(recipe), share: recipe => shareRecipe(recipe), toast: showToast, categoryLabel, difficultyLabel });
+const social = createSocialExperience({ backend: community, getRecipes: () => filteredRecipes(), getName: () => state.creatorName, getUser: () => state.session?.user?.id, openProfile: () => openProfile(), openRecipe: recipe => renderRecipeDetail(recipe), onView: recipe => rememberRecipe(recipe), share: recipe => shareRecipe(recipe), toast: showToast, categoryLabel, difficultyLabel });
 $('#recipeCuisine').innerHTML = `<option value="">${t('Choose a cuisine')}</option>` + CUISINES.map(c => `<option value="${c}">${t(c)}</option>`).join('');
 for (const select of [$('#recipeCategory'), $('#categoryFilter')]) for (const [value, label] of [['아랍식','Arab'],['호주식','Australian']]) { const option = new Option(label, value); select.querySelector('optgroup').append(option); }
-for (const [value, label] of [['아랍식','Arab'],['호주식','Australian']]) $('.category-nav').insertAdjacentHTML('beforeend', `<button data-category="${value}"><span class="category-dot tone-10"></span>${label}</button>`);
+$('.category-nav [data-category="인도식"]').insertAdjacentHTML('afterend', '<button data-category="아랍식"><span class="category-dot tone-16"></span>Arab</button><button data-category="호주식"><span class="category-dot tone-17"></span>Australian</button>');
+$('.side-nav [data-view="saved"]').insertAdjacentHTML('afterend', `<button type="button" data-view="recent">${icon('clock')}<span>Recently viewed</span><span class="count" id="recentCount">0</span></button>`);
+$('.media-feed-tabs').insertAdjacentHTML('beforeend', `<button type="button" data-media-filter="recent" aria-pressed="false">${icon('clock')}<span>Recent</span></button>`);
+$('.feed-toolbar').insertAdjacentHTML('afterend', '<div id="recentTools" class="recent-tools" hidden><p id="historyNotice" role="status"></p><button type="button" id="clearHistory" class="text-button">Clear viewing history</button></div>');
 for (const select of [$('#recipeCategory'), $('#difficulty')]) { select.required = true; const option = new Option(t('Please choose'), '', true, true); select.prepend(option); select.closest('.field').querySelector('label').append(' *'); }
 const australian = new Option('English (Australia)', 'en-AU'); $('#languageSelect').insertBefore(australian, $('#languageSelect').options[1]);
 $('#profileLabel').classList.remove('sr-only'); $('#profileLabel').setAttribute('data-no-translate', ''); $('.language-picker').after($('#profileButton'));
@@ -51,6 +58,29 @@ function categoryLabel(value) { return t(CATEGORY_LABELS[value] || value || 'Oth
 function difficultyLabel(value) { return t(DIFFICULTY_LABELS[value] || value || 'Easy'); }
 function readSaved() { try { const value = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); return new Set(Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []); } catch { return new Set(); } }
 function writeSaved() { try { localStorage.setItem(SAVED_KEY, JSON.stringify([...state.saved])); return true; } catch { return false; } }
+function historyPersisted(ok) {
+  if (!ok && !historyStorageWarned) { historyStorageWarned = true; showToast(t('Viewing history is only saved for this visit because browser storage is blocked.')); }
+}
+function rememberRecipe(recipe) {
+  historyPersisted(recentHistory.record(recipe.id));
+  if (historyRecipes) historyRecipes = [recipe, ...historyRecipes.filter(item => item.id !== recipe.id)];
+  if (state.view === 'recent') renderRecipes(); else updateViewControls();
+}
+async function loadRecentRecipes() {
+  const request = ++historyRequest, ids = recentHistory.list().map(item => item.id);
+  historyLoading = true; historyError = false; renderRecipes();
+  try {
+    const recipes = community ? await community.loadRecipesByIds(ids) : state.recipes.filter(recipe => ids.includes(recipe.id));
+    if (request !== historyRequest) return;
+    historyRecipes = recipes;
+  } catch { if (request === historyRequest) historyError = true; }
+  finally { if (request === historyRequest) { historyLoading = false; renderRecipes(); } }
+}
+function findRecipe(id) { return state.recipes.find(recipe => recipe.id === id) || historyRecipes?.find(recipe => recipe.id === id); }
+function removeHistory(id) {
+  historyPersisted(recentHistory.remove(id));
+  renderRecipes(); showToast(t('Removed from viewing history.'));
+}
 function showToast(message) { window.clearTimeout(state.toastTimer); elements.toast.textContent = message; elements.toast.classList.add('show'); state.toastTimer = window.setTimeout(() => elements.toast.classList.remove('show'), 3800); }
 function openDialog(dialog) { if (dialog && !dialog.open) dialog.showModal(); }
 function closeDialog(dialog) { if (dialog === elements.composer && state.publishing) return; if (dialog?.open) dialog.close(); }
@@ -113,16 +143,18 @@ async function loadRecipes() {
       state.recipes = data || [];
     }
   } catch { state.loadError = true; state.recipes = []; }
-  finally { state.loading = false; elements.grid.setAttribute('aria-busy', 'false'); renderRecipes(); }
+  finally { state.loading = false; elements.grid.setAttribute('aria-busy', 'false'); renderRecipes(); if (state.view === 'recent') await loadRecentRecipes(); }
 }
 function filteredRecipes() {
   const term = elements.search.value.trim().toLocaleLowerCase(); const category = elements.category.value; const time = Number(elements.time?.value) || Infinity; const difficulty = elements.difficulty?.value || '';
-  const recipes = state.recipes.filter((recipe) => {
+  const viewed = new Map(recentHistory.list().map(item => [item.id,item.viewedAt]));
+  const recipes = (state.view === 'recent' ? historyRecipes || state.recipes : state.recipes).filter((recipe) => {
     const text = [recipe.title, recipe.description, recipe.category, categoryLabel(recipe.category), recipe.profiles?.display_name, ...(recipe.recipe_ingredients || []).map((item) => item.item)].join(' ').toLocaleLowerCase();
-    const mediaMatch = state.view === 'all' || (state.view === 'saved' && state.saved.has(recipe.id)) || (state.view === 'video' && Boolean(recipe.video_url)) || (state.view === 'image' && Boolean(recipe.image_url) && !recipe.video_url);
+    const mediaMatch = state.view === 'all' || (state.view === 'recent' && viewed.has(recipe.id)) || (state.view === 'saved' && state.saved.has(recipe.id)) || (state.view === 'video' && Boolean(recipe.video_url)) || (state.view === 'image' && Boolean(recipe.image_url) && !recipe.video_url);
     return mediaMatch && (!term || text.includes(term)) && (!category || recipe.category === category) && Number(recipe.cook_minutes) <= time && (!difficulty || recipe.difficulty === difficulty);
   });
-  if (['quickest', 'fastest'].includes(elements.sort?.value)) recipes.sort((a, b) => a.cook_minutes - b.cook_minutes || new Date(b.created_at) - new Date(a.created_at));
+  if (state.view === 'recent') recipes.sort((a,b) => viewed.get(b.id)-viewed.get(a.id));
+  else if (['quickest', 'fastest'].includes(elements.sort?.value)) recipes.sort((a, b) => a.cook_minutes - b.cook_minutes || new Date(b.created_at) - new Date(a.created_at));
   else recipes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   return recipes;
 }
@@ -131,10 +163,17 @@ function updateViewControls() {
   $$('[data-quick]').forEach((button) => { const plain = state.view === 'all' && !elements.search.value.trim() && !elements.difficulty.value; const active = plain && (button.dataset.quick === 'quick' ? elements.time.value === '30' && !elements.category.value : button.dataset.quick === 'comfort' ? elements.category.value === '면·파스타' && !elements.time.value : elements.category.value === '디저트' && !elements.time.value); button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
   $$('[data-view], [data-media-filter]').forEach((button) => { const active = (button.dataset.view || button.dataset.mediaFilter) === state.view; button.classList.toggle('active', active); if (button.getAttribute('role') === 'tab') button.setAttribute('aria-selected', String(active)); else button.setAttribute('aria-pressed', String(active)); });
   $$('[data-category]').forEach((button) => { const active = button.dataset.category === elements.category.value; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
-  const titles = { all: 'Find your next favorite.', video: 'Watch. Cook. Repeat.', image: 'A little visual inspiration.', saved: 'Your recipe collection.' };
-  const subtitles = { all: 'Good food starts with a good idea.', video: 'Real cooking, one short video at a time.', image: 'Discover dishes worth making your own.', saved: 'Your favorites, saved on this device. Ready when you are.' };
+  const titles = { all: 'Find your next favorite.', video: 'Watch. Cook. Repeat.', image: 'A little visual inspiration.', saved: 'Your recipe collection.', recent: 'Your recently viewed recipes.' };
+  const subtitles = { all: 'Good food starts with a good idea.', video: 'Real cooking, one short video at a time.', image: 'Discover dishes worth making your own.', saved: 'Your favorites, saved on this device. Ready when you are.', recent: 'Up to 100 recipes you opened or watched in shorts, newest first. Private to this browser.' };
   $('#feedTitle').textContent = t(titles[state.view]); if ($('#feedSubtitle')) $('#feedSubtitle').textContent = t(subtitles[state.view]);
   if ($('#savedCount')) $('#savedCount').textContent = String(state.recipes.filter((recipe) => state.saved.has(recipe.id)).length);
+  $('#recentCount').textContent = String(recentHistory.list().length);
+  $('#recentTools').hidden = state.view !== 'recent';
+  $('#clearHistory').hidden = recentHistory.list().length === 0;
+  $('#historyNotice').textContent = t(historyLoading ? 'Loading your viewing history…' : historyError ? 'Some recently viewed recipes could not be checked. Refresh to try again.' : 'Deleted or unavailable recipes are not shown.');
+  elements.sort.disabled = state.view === 'recent';
+  // Keep the mobile library destination highlighted while its history view is open.
+  if (state.view === 'recent') { const library = $('.mobile-nav [data-view="saved"]'); library?.classList.add('active'); library?.setAttribute('aria-pressed', 'true'); }
 }
 function renderRecipes() {
   updateViewControls(); const recipes = filteredRecipes();
@@ -146,25 +185,41 @@ function renderRecipes() {
     return `<article class="recipe-card is-${mediaKind}"><div class="card-media">${media}<button class="card-open" type="button" data-recipe-id="${escapeHtml(recipe.id)}" aria-label="${escapeHtml(t('Open'))} ${escapeHtml(recipe.title)}">${mediaKind === 'video' ? `<span class="play-circle">${icon('play')}</span>` : ''}</button><span class="media-badge">${icon(mediaKind === 'video' ? 'play' : mediaKind === 'image' ? 'image' : 'book')}${escapeHtml(t(mediaKind === 'video' ? 'Video' : mediaKind === 'image' ? 'Photo' : 'Recipe'))}</span><button class="save-button${saved ? ' is-saved' : ''}" type="button" data-save-id="${escapeHtml(recipe.id)}" aria-pressed="${saved}" aria-label="${escapeHtml(t(saved ? 'Unsave' : 'Save'))} ${escapeHtml(recipe.title)}">${icon('bookmark')}</button></div><div class="card-content"><div class="card-author"><span class="avatar-small" aria-hidden="true">${escapeHtml(initial)}</span><span>${escapeHtml(author)}</span><span class="card-category">${escapeHtml(categoryLabel(recipe.category))}</span></div><h3><button type="button" data-recipe-id="${escapeHtml(recipe.id)}">${escapeHtml(recipe.title)}</button></h3><p class="card-description">${escapeHtml(recipe.description || t('A recipe from a real home kitchen. Make it yours.'))}</p><div class="card-meta"><span>${icon('clock')}${escapeHtml(localizeMinutes(recipe.cook_minutes))}</span><span>${icon('utensils')}${escapeHtml(localizeServings(recipe.servings))}</span><span>${escapeHtml(difficultyLabel(recipe.difficulty))}</span></div></div></article>`;
   }).join('');
   $$('.recipe-card').forEach((card, index) => { const recipe = recipes[index]; card.querySelector('.card-content').insertAdjacentHTML('beforeend', `<div class="card-social"><button type="button" data-comments-id="${escapeHtml(recipe.id)}">${icon('heart')} ${escapeHtml(t('Reactions & comments'))}</button><button type="button" data-share-id="${escapeHtml(recipe.id)}" aria-label="${escapeHtml(t('Share'))}">${icon('external')}</button></div>`); });
+  if (state.view === 'recent') $$('.recipe-card').forEach((card,index) => {
+    const recipe = recipes[index], entry = recentHistory.list().find(item => item.id === recipe.id);
+    const date = new Date(entry.viewedAt);
+    card.querySelector('.card-content').insertAdjacentHTML('beforeend', `<div class="recent-card-meta"><time datetime="${date.toISOString()}" data-no-translate>${escapeHtml(date.toLocaleString(getLanguage(), {dateStyle:'medium',timeStyle:'short'}))}</time><button type="button" class="icon-button" data-remove-history="${escapeHtml(recipe.id)}" aria-label="${escapeHtml(t('Remove from viewing history'))}">${icon('x')}</button></div>`);
+  });
   const empty = recipes.length === 0; elements.empty.hidden = !empty;
-  if ($('#retryButton')) $('#retryButton').hidden = !state.loadError;
+  if ($('#retryButton')) $('#retryButton').hidden = !(state.loadError || (state.view === 'recent' && historyError));
   if ($('#emptyClearButton')) $('#emptyClearButton').hidden = state.loadError || !hasFilters();
   if ($('#clearFilters')) $('#clearFilters').hidden = !hasFilters();
-  if (state.loadError) { elements.status.textContent = t('The recipe feed is temporarily unavailable.'); $('#emptyTitle').textContent = t('Your next favorite is worth the wait.'); $('#emptyDescription').textContent = t('We could not connect to the recipe collection. Please try again.'); return; }
+  if (state.loadError && state.view !== 'recent') { elements.status.textContent = t('The recipe feed is temporarily unavailable.'); $('#emptyTitle').textContent = t('Your next favorite is worth the wait.'); $('#emptyDescription').textContent = t('We could not connect to the recipe collection. Please try again.'); return; }
   elements.status.textContent = localizeCount(recipes.length, state.view === 'saved');
+  if (empty && state.view === 'recent' && !hasFilters()) {
+    $('#emptyTitle').textContent = t(historyError ? 'Your next favorite is worth the wait.' : 'No recently viewed recipes yet.');
+    $('#emptyDescription').textContent = t(historyError ? 'Some recently viewed recipes could not be checked. Refresh to try again.' : recentHistory.list().length ? 'Deleted or unavailable recipes are not shown.' : 'Open a recipe or watch shorts. The recipes you view will appear here automatically.');
+    elements.empty.hidden = historyLoading; return;
+  }
   if (empty) { $('#emptyTitle').textContent = t(hasFilters() ? 'Nothing here just yet.' : state.view === 'saved' ? 'Start your personal recipe book.' : state.view === 'video' ? 'The first video is yours to share.' : state.view === 'image' ? 'A delicious photo belongs here.' : 'Every recipe book starts somewhere.'); $('#emptyDescription').textContent = t(hasFilters() ? 'Try another ingredient or clear your filters to explore more.' : state.view === 'saved' ? 'Tap the bookmark on a recipe to keep it here on this device.' : 'Share something you love to cook. A simple recipe can make someone’s day.'); }
 }
-function setView(view, scroll = false) { if (!['all', 'video', 'image', 'saved'].includes(view)) return; state.view = view; renderRecipes(); if (scroll) $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function setView(view, scroll = false) {
+  if (!['all', 'video', 'image', 'saved', 'recent'].includes(view)) return;
+  state.view = view;
+  if (view === 'recent') { clearFilters(); loadRecentRecipes(); } else renderRecipes();
+  if (scroll) $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function clearFilters() { elements.search.value = ''; elements.category.value = ''; if (elements.time) elements.time.value = ''; if (elements.difficulty) elements.difficulty.value = ''; $$('[data-quick]').forEach((button) => button.classList.remove('active')); renderRecipes(); }
 function toggleSave(recipeId) {
-  if (!state.recipes.some((recipe) => recipe.id === recipeId)) return;
+  if (!findRecipe(recipeId)) return;
   const saved = !state.saved.has(recipeId); if (saved) state.saved.add(recipeId); else state.saved.delete(recipeId);
+  if (saved && !state.recipes.some(recipe => recipe.id === recipeId)) state.recipes.push(findRecipe(recipeId));
   const persisted = writeSaved(); renderRecipes();
   $$('[data-save-id]', elements.detail).forEach((button) => { if (button.dataset.saveId !== recipeId) return; button.classList.toggle('is-saved', saved); button.setAttribute('aria-pressed', String(saved)); button.innerHTML = `${icon('bookmark')} ${escapeHtml(t(saved ? 'Saved' : 'Save recipe'))}`; });
   showToast(t(persisted ? (saved ? 'Saved to your recipe book on this device.' : 'Removed from your saved recipes.') : 'Saved for this visit. This browser is blocking storage.'));
 }
 
-function renderRecipeDetail(recipe) {
+function renderRecipeDetail(recipe, remember = true) {
   social.pause();
   $$('video', elements.detail).forEach(video => video.pause());
   state.detailId = recipe.id; elements.detail.classList.remove('cook-mode');
@@ -181,6 +236,7 @@ function renderRecipeDetail(recipe) {
   $('#shareRecipeButton').addEventListener('click', () => shareRecipe(recipe));
   $('.delete-recipe', elements.detail)?.addEventListener('click', () => deleteRecipe(recipe));
   openDialog(elements.detail);
+  if (remember) rememberRecipe(recipe);
   const panel = document.createElement('div'); $('.detail-content', elements.detail).append(panel); social.mount(panel, recipe);
   if (recipe.cuisine) $('.detail-meta', elements.detail).insertAdjacentHTML('afterbegin', `<span>${escapeHtml(t('Country / cuisine'))}: ${escapeHtml(t(recipe.cuisine))}</span>`);
   const video = $('video', elements.detail); if (video) social.guardVideo(video);
@@ -209,7 +265,7 @@ async function deleteRecipe(recipe) {
   try {
     if (community) await community.deleteRecipe(recipe);
     else { const { error } = await supabase.from('recipes').delete().eq('id', recipe.id).eq('author_id', state.session.user.id); if (error) throw error; }
-    closeDialog(elements.detail); state.saved.delete(recipe.id); writeSaved(); await loadRecipes(); showToast(t('Your recipe has been deleted.'));
+    closeDialog(elements.detail); state.saved.delete(recipe.id); writeSaved(); historyPersisted(recentHistory.remove(recipe.id)); await loadRecipes(); showToast(t('Your recipe has been deleted.'));
   } catch (error) { showToast(friendlyError(error, t('We could not delete this recipe.'))); }
   finally { if (button) button.disabled = false; }
 }
@@ -394,6 +450,11 @@ elements.search.addEventListener('input', renderRecipes);
 $('#clearFilters')?.addEventListener('click', clearFilters);
 $('#emptyClearButton')?.addEventListener('click', clearFilters);
 $('#retryButton')?.addEventListener('click', loadRecipes);
+$('#clearHistory').addEventListener('click', () => {
+  if (!window.confirm(t('Clear all viewing history on this browser? Saved recipes and published posts will not be deleted.'))) return;
+  historyRequest++; historyLoading = false; historyError = false; historyRecipes = [];
+  historyPersisted(recentHistory.clear()); renderRecipes(); showToast(t('Viewing history cleared.'));
+});
 $('#copyShareLink')?.addEventListener('click', copyShareLink);
 $('#nativeShareButton')?.addEventListener('click', async () => { if (!activeShare || typeof navigator.share !== 'function') return; try { await navigator.share(activeShare); } catch (error) { if (error.name !== 'AbortError') $('#shareMessage').textContent = t('Your device could not open its share menu. Copy the link instead.'); } });
 $('#filtersButton')?.addEventListener('click', () => { const panel = $('#filterPanel'); panel.hidden = !panel.hidden; $('#filtersButton').setAttribute('aria-expanded', String(!panel.hidden)); });
@@ -404,7 +465,8 @@ document.addEventListener('click', (event) => {
   if (target.matches('[data-open-composer], #openComposer')) { event.preventDefault(); openComposer(); return; }
   if (target.matches('[data-open-profile], #profileButton, #tabProfileButton')) { event.preventDefault(); openProfile(); return; }
   if (target.matches('[data-save-id]')) { toggleSave(target.dataset.saveId); return; }
-  if (target.matches('[data-recipe-id]')) { const recipe = state.recipes.find((item) => item.id === target.dataset.recipeId); if (recipe) renderRecipeDetail(recipe); return; }
+  if (target.matches('[data-remove-history]')) { removeHistory(target.dataset.removeHistory); return; }
+  if (target.matches('[data-recipe-id]')) { const recipe = findRecipe(target.dataset.recipeId); if (recipe) renderRecipeDetail(recipe); return; }
   if (target.matches('[data-view], [data-media-filter]')) { event.preventDefault(); setView(target.dataset.view || target.dataset.mediaFilter, Boolean(target.dataset.view)); return; }
   if (target.matches('[data-category]')) { elements.category.value = target.dataset.category; renderRecipes(); return; }
   if (target.matches('[data-quick]')) {
@@ -430,10 +492,13 @@ elements.composer.addEventListener('cancel', (event) => { if (state.publishing) 
 elements.detail.addEventListener('close', () => { $$('video', elements.detail).forEach((video) => video.pause()); elements.detail.classList.remove('cook-mode'); });
 window.addEventListener('beforeunload', (event) => { if (state.publishing) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('storage', (event) => { if (event.key === SAVED_KEY) { state.saved = readSaved(); renderRecipes(); } });
+window.addEventListener('storage', (event) => {
+  if (event.key === RECENT_KEY || event.key === null) { recentHistory.sync(); if (state.view === 'recent') loadRecentRecipes(); else updateViewControls(); }
+});
 $('#languageSelect')?.addEventListener('change', (event) => setLanguage(event.currentTarget.value));
 window.addEventListener('recipe-language-change', () => {
   applyTranslations(); renderRecipes();
-  if (state.detailId && elements.detail.open) { const recipe = state.recipes.find((item) => item.id === state.detailId); if (recipe) renderRecipeDetail(recipe); }
+  if (state.detailId && elements.detail.open) { const recipe = findRecipe(state.detailId); if (recipe) renderRecipeDetail(recipe, false); }
   updateProfileLabel();
 });
 supabase?.auth.onAuthStateChange((_event, session) => { state.session = session; });

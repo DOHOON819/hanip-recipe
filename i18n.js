@@ -1,6 +1,7 @@
 import { EXTRA_DICTIONARIES, EXTRA_META } from './i18n-extra.js?v=20261115-nine-languages';
 import { SOCIAL_DICTIONARIES } from './i18n-social.js?v=20261115-shorts-v1';
 import { FEEDBACK_DICTIONARIES, FEEDBACK_ALIASES } from './i18n-feedback.js?v=20261115-shorts-v1';
+import { RECENT_DICTIONARIES } from './i18n-recent.js?v=20261115-recent-v1';
 
 const STORAGE_KEY = 'recipe-story:language:v1';
 const SUPPORTED = ['en', 'en-AU', 'ko', 'ja', 'fr', 'it', 'hi', 'es-MX', 'zh-CN', 'ar'];
@@ -125,6 +126,7 @@ Object.assign(ja, {
 const dictionaries = { en: {}, ko, ja, ...EXTRA_DICTIONARIES };
 for (const [locale, values] of Object.entries(FEEDBACK_DICTIONARIES)) Object.assign(dictionaries[locale], values);
 for (const [locale, values] of Object.entries(SOCIAL_DICTIONARIES)) dictionaries[locale] = { ...dictionaries[locale], ...values };
+for (const [locale, values] of Object.entries(RECENT_DICTIONARIES)) Object.assign(dictionaries[locale], values);
 for (const locale of Object.keys(FEEDBACK_DICTIONARIES)) for (const [key, alias] of Object.entries(FEEDBACK_ALIASES)) dictionaries[locale][key] = dictionaries[locale][alias];
 const meta = {
   en: { title: 'Recipe Story — Good food. Worth sharing.', description: 'Recipe Story is a free photo and video recipe-sharing app. Discover Korean, Japanese, Chinese, Mexican, American, French, Italian and easy home-cooking recipes.', ogDescription: 'Discover, save and share real home-cooking recipes with photos, videos and clear steps.' },

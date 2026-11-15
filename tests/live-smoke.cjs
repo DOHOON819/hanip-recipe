@@ -27,6 +27,9 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     assert.equal(await page.locator('#languageSelect option[value="en-AU"]').count(),1);
     assert.equal(await page.locator('#recipeCategory option[value="아랍식"]').count(),1);
     assert.equal(await page.locator('#recipeCategory option[value="호주식"]').count(),1);
+    const categories = await page.locator('.category-nav [data-category]').evaluateAll(buttons=>buttons.map(button=>button.dataset.category));
+    assert.deepEqual(categories.slice(categories.indexOf('인도식'),categories.indexOf('인도식')+4),['인도식','아랍식','호주식','브런치']);
+    assert.equal(await page.locator('.side-nav [data-view="recent"]').count(),1);
     assert.equal(await page.locator('#recipeDescription').getAttribute('required'),'');
     assert.equal(await page.locator('#recipeCuisine').getAttribute('required'),'');
     assert.ok(await page.locator('[data-open-shorts]').count()>=3);
@@ -57,6 +60,14 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     assert.equal(await page.locator('#composerDialog').isVisible(),true,'editor opens without creating a guest account');
     await page.locator('[data-close-dialog="composerDialog"]').click();
     await page.setViewportSize({width:390,height:844});
+    await page.locator('[data-media-filter="recent"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#historyNotice').textContent.includes('불러오고'));
+    assert.match(await page.locator('#feedTitle').innerText(),/최근 본 레시피/);
+    assert.match(await page.locator('#feedSubtitle').innerText(),/이 브라우저/);
+    assert.equal(await page.locator('#recentTools').isVisible(),true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({path:path.join(out, 'production-recent-mobile.png')});
+    await page.locator('[data-media-filter="all"]').click();
     await page.evaluate(() => scrollTo(0,0));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({path:path.join(out, host+'-mobile.png'),fullPage:true});

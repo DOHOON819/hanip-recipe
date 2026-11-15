@@ -126,6 +126,26 @@ export function createCommunityBackend(config) {
       events.filter((event) => event.kind === DELETE_KIND).forEach((event) => { event.tags.forEach((tag) => { if (tag[0] === 'e') deletedIds.add(`${event.pubkey}:${tag[1]}`); if (tag[0] === 'a') deletedCoordinates.add(`${event.pubkey}:${tag[1]}`); }); });
       return events.filter((event) => event.kind === RECIPE_KIND && tagValue(event, 't') === appTag(config) && !deletedIds.has(`${event.pubkey}:${event.id}`) && !deletedCoordinates.has(`${event.pubkey}:${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}`)).map((event) => safeRecipe(event, profiles)).filter(Boolean);
     },
+    async loadRecipesByIds(ids) {
+      const wanted = [...new Set(ids.filter(id => /^[0-9a-f]{64}$/.test(id)))].slice(0, 100);
+      if (!wanted.length) return [];
+      const found = await queryRelays(relays, [{ ids: wanted, kinds: [RECIPE_KIND], '#t': [appTag(config)], limit: 100 }]);
+      const recipes = found.filter(event => event.kind === RECIPE_KIND && wanted.includes(event.id) && tagValue(event, 't') === appTag(config));
+      if (!recipes.length) return [];
+      const coordinates = recipes.map(event => `${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}`);
+      const related = await queryRelays(relays, [
+        { kinds: [DELETE_KIND], '#e': wanted, '#k': [String(RECIPE_KIND)], limit: 1000 },
+        { kinds: [DELETE_KIND], '#a': coordinates, '#k': [String(RECIPE_KIND)], limit: 1000 },
+        { ...profileFilter, authors: [...new Set(recipes.map(event => event.pubkey))] }
+      ]);
+      const profiles = new Map();
+      related.filter(event => event.kind === PROFILE_KIND && tagValue(event, 'd') === 'recipe-book-profile')
+        .sort((a,b) => a.created_at-b.created_at).forEach(event => { try { profiles.set(event.pubkey, JSON.parse(event.content).displayName); } catch { /* Use the post byline. */ } });
+      return recipes.filter(event => !related.some(deletion => deletion.kind === DELETE_KIND && deletion.pubkey === event.pubkey && deletion.tags.some(tag =>
+        (tag[0] === 'e' && tag[1] === event.id) ||
+        (tag[0] === 'a' && tag[1] === `${RECIPE_KIND}:${event.pubkey}:${tagValue(event, 'd')}` && deletion.created_at >= event.created_at)
+      ))).map(event => safeRecipe(event, profiles)).filter(Boolean);
+    },
     async loadRecipe(id) {
       if (!/^[0-9a-f]{64}$/.test(id)) return null;
       const events = await queryRelays(relays, [{ ids: [id], kinds: [RECIPE_KIND] }]);

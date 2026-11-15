@@ -73,6 +73,12 @@ For an explicitly opted-in infrastructure test, set `RECIPE_BOOK_LIVE=1` and run
 
 For a read-only production smoke test, run `node tests/live-smoke.cjs https://dohoon819.github.io/hanip-recipe/`. It opens the page, reads the public feed and checks both screen sizes without creating a session or posting content.
 
+## Recently viewed collection
+
+The sidebar's **Recently viewed** entry and the feed's **Recent** tab show up to 100 recipes actually opened in details or viewed in shorts, most recently viewed first. Reopening a recipe moves it to the top without duplicates. Only recipe IDs and viewing timestamps are kept under `recipe-book:recent:v1` in this browser's localStorage. The app does not publish a viewing-history event or associate history with the public author profile. Loading remembered recipes sends ordinary ID-based read queries to public relays.
+
+History supports individual removal, confirmed clearing, reload persistence and cross-tab updates. Clearing history does not delete posts or saved bookmarks. Public recipes are fetched by exact ID when opening history, including older posts outside the latest feed, and signed author deletions are respected. If browser storage is blocked, history lasts only for the current visit. Tests: `node tests/recent-unit.cjs`, `node tests/recipe-book.spec.cjs`, `node tests/social.spec.cjs`.
+
 ## Artwork
 
 The hero, link-preview image, favicon and interface icons are original code-native Recipe Story artwork. See [asset notes](assets/README.md).
