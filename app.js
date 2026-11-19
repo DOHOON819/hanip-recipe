@@ -1,6 +1,6 @@
 import { createCommunityBackend } from './community-backend.js?v=20261115-quick-post-v1';
-import { createSocialExperience, checkVideo } from './social.js?v=20261115-privacy-v1';
-import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261115-quick-post-v1';
+import { createSocialExperience, checkVideo } from './social.js?v=20261119-video-shorts-v2';
+import { applyTranslations, byline, confirmDelete, getLanguage, localizeCount, localizeMinutes, localizeServings, setLanguage, t } from './i18n.js?v=20261119-video-shorts-v2';
 import { createRecentHistory, RECENT_KEY } from './recent.js?v=20261115-recent-v1';
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -30,13 +30,13 @@ const SAVED_KEY = 'recipe-book:saved:v1';
 let historyStorage; try { historyStorage = window.localStorage; } catch { historyStorage = null; }
 const recentHistory = createRecentHistory(historyStorage);
 let historyRecipes = null, historyLoading = false, historyError = false, historyRequest = 0, historyStorageWarned = false;
-const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'none', previewUrl: null, step: 3, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
+const state = { session: null, creatorName: '', recipes: [], view: 'all', selectedFile: null, selectedImage: null, mediaMode: 'none', postMode: 'standard', previewUrl: null, step: 3, publishing: false, pendingPublication: null, loading: true, loadError: false, toastTimer: null, detailId: null, saved: readSaved() };
 const elements = { composer: $('#composerDialog'), detail: $('#detailDialog'), form: $('#recipeForm'), grid: $('#recipeGrid'), status: $('#feedStatus'), empty: $('#emptyState'), search: $('#searchInput'), category: $('#categoryFilter'), time: $('#timeFilter'), difficulty: $('#difficultyFilter'), sort: $('#sortFilter'), message: $('#recipeMessage'), toast: $('#toast') };
 const community = config?.backend === 'community' && !window.__mockClient ? createCommunityBackend(config) : null;
 let supabase = null;
 if (!community && config?.supabaseUrl && config?.supabasePublishableKey) { const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'); supabase = createClient(config.supabaseUrl, config.supabasePublishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }); }
 const CUISINES = ['Korean','Japanese','Chinese','Mexican','American','French','Italian','Indian','Arab','Australian','Other cuisine'];
-const social = createSocialExperience({ backend: community, getRecipes: () => filteredRecipes(), getName: () => state.creatorName, getUser: () => state.session?.user?.id, openProfile: () => openProfile(), openRecipe: recipe => renderRecipeDetail(recipe), onView: recipe => rememberRecipe(recipe), share: recipe => shareRecipe(recipe), toast: showToast, categoryLabel, difficultyLabel });
+const social = createSocialExperience({ backend: community, getRecipes: () => filteredRecipes(), getShortsRecipes: () => state.recipes.filter(recipe => Boolean(recipe.video_url)).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)), getName: () => state.creatorName, getUser: () => state.session?.user?.id, openProfile: () => openProfile(), openComposer: mode => openComposer(mode), openRecipe: recipe => renderRecipeDetail(recipe), onView: recipe => rememberRecipe(recipe), share: recipe => shareRecipe(recipe), toast: showToast, categoryLabel, difficultyLabel });
 $('#recipeCuisine').innerHTML = `<option value="">${t('Choose a cuisine')}</option>` + CUISINES.map(c => `<option value="${c}">${t(c)}</option>`).join('');
 for (const select of [$('#recipeCategory'), $('#categoryFilter')]) for (const [value, label] of [['아랍식','Arab'],['호주식','Australian']]) { const option = new Option(label, value); select.querySelector('optgroup').append(option); }
 $('.category-nav [data-category="인도식"]').insertAdjacentHTML('afterend', '<button data-category="아랍식"><span class="category-dot tone-16"></span>Arab</button><button data-category="호주식"><span class="category-dot tone-17"></span>Australian</button>');
@@ -308,6 +308,9 @@ function validateStep(step) {
     if (ingredients.some((item) => !item.item || item.item.length > 120 || item.quantity.length > 60)) { message = t('If you add an ingredient, enter its name. The amount is optional.'); target = $('[data-item]'); }
     else if (steps.some((instruction) => instruction.length < 2 || instruction.length > 500)) { message = t('If you add a cooking step, use 2–500 characters.'); target = $('#steps textarea'); }
   } else if (mediaChecking) { message = t('Checking video…'); target = $('#videoFile'); }
+  else if (state.postMode === 'shorts' && (state.mediaMode !== 'video' || !state.selectedFile)) {
+    message = t('A Shorts post needs a video. Choose a playable video to publish.'); target = $('#videoFile'); $('.optional-recipe-details')?.setAttribute('open', '');
+  }
   else if (!['cover', 'contain'].includes($('#imageFit').value)) { message = t('Choose how your photo should fit the card.'); target = $('#imageFit'); }
   if (message) { elements.message.textContent = message; target?.focus(); return false; }
   return true;
@@ -322,10 +325,21 @@ function clearSelectedMedia() {
 }
 function setMediaMode(mode) {
   if (!['image', 'video', 'none'].includes(mode) || state.publishing) return;
+  if (state.postMode === 'shorts' && mode !== 'video') { showToast(t('Shorts are video-only. Switch to a recipe post to use a photo or text only.')); return; }
   if (state.mediaMode !== mode) { clearSelectedMedia(); elements.message.textContent = ''; } state.mediaMode = mode;
   $$('[data-media-mode]').forEach((button) => { const active = button.dataset.mediaMode === mode; button.classList.toggle('active', active); if (button.getAttribute('role') === 'tab') button.setAttribute('aria-selected', String(active)); else button.setAttribute('aria-pressed', String(active)); });
   $('#imagePicker').hidden = mode !== 'image'; $('#videoPicker').hidden = mode !== 'video';
   const fitField = $('#imageFit').closest('.field'); if (fitField) fitField.hidden = mode !== 'image';
+}
+function setPostMode(mode) {
+  if (!['standard', 'shorts'].includes(mode) || state.publishing) return;
+  state.postMode = mode;
+  $$('[data-post-mode]').forEach(button => { const active = button.dataset.postMode === mode; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
+  $('#shortsRequirement').hidden = mode !== 'shorts';
+  $$('[data-media-mode]').forEach(button => { button.disabled = state.publishing || (mode === 'shorts' && button.dataset.mediaMode !== 'video'); });
+  if (mode === 'shorts') { $('.optional-recipe-details')?.setAttribute('open', ''); setMediaMode('video'); }
+  elements.composer.classList.toggle('is-shorts-post', mode === 'shorts');
+  if (!state.publishing) $('#publishButton').textContent = t(state.pendingPublication ? 'Check publication status' : mode === 'shorts' ? 'Publish short' : 'Publish recipe');
 }
 let mediaSelection = 0, mediaChecking = false;
 async function handleMediaSelect(file, kind) {
@@ -345,12 +359,13 @@ function resetRecipeForm() {
   elements.form.reset(); $('#authorName').value = state.creatorName;
   $('#recipeCuisine').value = 'Other cuisine'; $('#recipeCategory').value = '기타'; $('#difficulty').value = '쉬움'; $('#cookMinutes').value = '1'; $('#servings').value = '1';
   $('#ingredients').replaceChildren(); $('#steps').replaceChildren(); addRow('ingredient'); addRow('step');
-  clearSelectedMedia(); state.mediaMode = 'none'; setMediaMode('none'); setFormStep(); $('#uploadProgress').hidden = true; elements.message.textContent = ''; $('.optional-recipe-details')?.removeAttribute('open');
+  clearSelectedMedia(); state.mediaMode = 'none'; state.postMode = 'standard'; setMediaMode('none'); setPostMode('standard'); setFormStep(); $('#uploadProgress').hidden = true; elements.message.textContent = ''; $('.optional-recipe-details')?.removeAttribute('open');
 }
-function openComposer() { if (!$('#authorName').value.trim()) $('#authorName').value = state.creatorName; openDialog(elements.composer); window.setTimeout(() => $('#recipeDescription')?.focus(), 30); }
+function openComposer(mode) { if (!$('#authorName').value.trim()) $('#authorName').value = state.creatorName; if (mode === 'shorts') setPostMode('shorts'); openDialog(elements.composer); window.setTimeout(() => (mode === 'shorts' ? $('#videoFile') : $('#recipeDescription'))?.focus(), 30); }
 function setPublishing(publishing) {
   state.publishing = publishing; $$('button, input, select, textarea', elements.composer).forEach((control) => { control.disabled = publishing; });
-  elements.composer.setAttribute('aria-busy', String(publishing)); $('#publishButton').textContent = t(publishing ? 'Preparing your recipe…' : state.pendingPublication ? 'Check publication status' : 'Publish recipe');
+  elements.composer.setAttribute('aria-busy', String(publishing)); $('#publishButton').textContent = t(publishing ? 'Preparing your recipe…' : state.pendingPublication ? 'Check publication status' : state.postMode === 'shorts' ? 'Publish short' : 'Publish recipe');
+  if (!publishing) setPostMode(state.postMode);
 }
 function safeFileName(name) { const extension = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'; return `${crypto.randomUUID()}.${extension}`; }
 async function uploadFile(file, userId, bucket, kind, uploadedFiles) {
@@ -485,6 +500,7 @@ document.addEventListener('click', (event) => {
     target.classList.add('active'); renderRecipes(); $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
   }
   if (target.matches('[data-media-mode]')) { setMediaMode(target.dataset.mediaMode); return; }
+  if (target.matches('[data-post-mode]')) { setPostMode(target.dataset.postMode); return; }
   if (target.matches('[data-add-row]') && !state.publishing) { addRow(target.dataset.addRow); return; }
   if (target.matches('.remove-row') && !state.publishing) { const list = target.closest('.entry-row').parentElement; target.closest('.entry-row').remove(); if (!list.children.length) addRow(list.id === 'ingredients' ? 'ingredient' : 'step'); refreshStepNumbers(); }
 });

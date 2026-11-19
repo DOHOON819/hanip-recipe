@@ -1,4 +1,4 @@
-import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261115-privacy-v1';
+import { t, applyTranslations, getLanguage, localizeMinutes } from './i18n.js?v=20261119-video-shorts-v2';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url = value => { try { const u = new URL(value); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
@@ -32,7 +32,7 @@ export function createSocialExperience(api) {
   document.querySelector('.media-feed-tabs').insertAdjacentHTML('afterend', '<button class="shorts-entry" type="button" data-open-shorts>' + icon('shorts') + '<span>Watch shorts</span></button>');
   document.body.insertAdjacentHTML('beforeend', `
     <dialog id="shortsDialog" class="shorts-dialog" aria-labelledby="shortsTitle">
-      <header class="shorts-header"><h2 id="shortsTitle">Shorts</h2><span id="shortsHint" role="status">Scroll to explore</span><button type="button" data-close-shorts class="icon-button" aria-label="Close">${icon('x')}</button></header>
+      <header class="shorts-header"><h2 id="shortsTitle">Shorts</h2><span id="shortsHint" role="status">Video recipes only · swipe to explore</span><button type="button" class="shorts-create" data-create-short>${icon('plus')}<span>Post a short</span></button><button type="button" data-close-shorts class="icon-button" aria-label="Close">${icon('x')}</button></header>
       <div id="shortsViewport" class="shorts-viewport" tabindex="0" aria-label="Recipe shorts"></div>
       <nav class="shorts-navigation" aria-label="Browse shorts"><button type="button" data-short-step="-1" aria-label="Previous recipe">${icon('up')}</button><button type="button" data-short-step="1" aria-label="Next recipe">${icon('down')}</button></nav>
     </dialog>
@@ -70,7 +70,7 @@ export function createSocialExperience(api) {
       finally { pending.delete(id); }
     })(); pending.set(id, request); return request;
   }
-  function status(id, message) { document.querySelectorAll('[data-social-status]').forEach(el => { if (el.dataset.socialStatus === id) el.textContent = message; }); if (shorts.open && current?.dataset.shortId === id) document.getElementById('shortsHint').textContent = message || t('Scroll to explore'); }
+  function status(id, message) { document.querySelectorAll('[data-social-status]').forEach(el => { if (el.dataset.socialStatus === id) el.textContent = message; }); if (shorts.open && current?.dataset.shortId === id) document.getElementById('shortsHint').textContent = message || t('Video recipes only · swipe to explore'); }
   function mount(container, recipe) {
     container.innerHTML = `<section class="social-panel" data-panel-id="${esc(recipe.id)}"><h3>${esc(t('Reactions & comments'))}</h3>${reactionButtons(recipe.id)}<p class="social-status" role="status" data-social-status="${esc(recipe.id)}"></p><button class="text-button" type="button" data-social-refresh="${esc(recipe.id)}">${icon('refresh')}${esc(t('Refresh comments'))}</button><div class="comments-list" data-comments-list="${esc(recipe.id)}"><p>${esc(t('Loading comments…'))}</p></div><form class="comment-form" data-comment-form="${esc(recipe.id)}"><label>${esc(t('Write a comment'))}<textarea dir="auto" required maxlength="1000" rows="3" placeholder="${esc(t('Share a tip or ask a question…'))}"></textarea></label><div><button type="button" class="text-button" data-open-profile>${esc(api.getName() || t('Choose your creator name'))}</button><button type="submit" class="primary-button">${esc(t('Post comment'))}</button></div><p class="comment-message" role="status"></p></form></section>`;
     paint(recipe.id); load(recipe.id).catch(() => {});
@@ -106,13 +106,13 @@ export function createSocialExperience(api) {
     document.querySelector('[data-short-step="1"]').disabled = position < 0 || position >= shortsRecipes.length - 1;
   }
   function openShorts(startId) {
-    shortsRecipes = api.getRecipes(); current = null; observer?.disconnect();
+    shortsRecipes = (api.getShortsRecipes?.() || api.getRecipes()).filter(recipe => Boolean(url(recipe.video_url))); current = null; observer?.disconnect();
     viewport.innerHTML = shortsRecipes.map((recipe, index) => {
       const video = url(recipe.video_url), photo = url(recipe.image_url);
       const meta = [...new Set([api.categoryLabel(recipe.category), recipe.cuisine ? t(recipe.cuisine) : '', localizeMinutes(recipe.cook_minutes), api.difficultyLabel(recipe.difficulty)].filter(Boolean))].join(' · ');
-      const media = video ? `<video data-src="${esc(video)}" ${photo ? `poster="${esc(photo)}"` : ''} playsinline muted loop preload="none" controls aria-label="${esc(recipe.title)}"></video>` : photo ? `<img src="${esc(photo)}" loading="${index ? 'lazy':'eager'}" alt="${esc(recipe.title)}"/>` : `<div class="short-text-recipe">${icon('book')}<p dir="auto" data-no-translate>${esc(recipe.description)}</p></div>`;
-      return `<article class="short-slide" data-short-id="${esc(recipe.id)}" aria-label="${index+1} / ${shortsRecipes.length}"><div class="short-card"><div class="short-media">${media}</div><div class="short-caption"><span class="short-author" dir="auto" data-no-translate>${esc(recipe.profiles?.display_name || t('Home cook'))}</span><h3 dir="auto" data-no-translate>${esc(recipe.title)}</h3><p>${esc(meta)}</p><div class="short-caption-actions"><button type="button" class="primary-button" data-short-detail="${esc(recipe.id)}">${icon('book')}${esc(t('Full recipe'))}</button>${video ? `<button type="button" data-short-play>${esc(t('Pause'))}</button><button type="button" data-short-sound aria-label="${esc(t('Turn sound on'))}">${icon('mute')}</button>` : ''}</div></div></div><aside class="short-actions">${reactionButtons(recipe.id)}<button type="button" data-comments-id="${esc(recipe.id)}">${icon('comment')}<span>${esc(t('Comments'))}</span><b data-comment-count="${esc(recipe.id)}">—</b></button><button type="button" data-share-id="${esc(recipe.id)}">${icon('external')}<span>${esc(t('Share'))}</span></button><p class="social-status" data-social-status="${esc(recipe.id)}" role="status"></p></aside></article>`;
-    }).join('') || `<div class="shorts-empty">${icon('book')}<h3>${esc(t('No recipes here yet.'))}</h3><p>${esc(t('Share a recipe to start the feed.'))}</p><button type="button" class="primary-button" data-open-composer>${esc(t('Share a recipe'))}</button></div>`;
+      const media = `<video data-src="${esc(video)}" ${photo ? `poster="${esc(photo)}"` : ''} playsinline muted loop preload="none" controls aria-label="${esc(recipe.title)}"></video>`;
+      return `<article class="short-slide" data-short-id="${esc(recipe.id)}" aria-label="${index+1} / ${shortsRecipes.length}"><div class="short-card"><div class="short-media">${media}</div><div class="short-caption"><span class="short-author" dir="auto" data-no-translate>${esc(recipe.profiles?.display_name || t('Home cook'))}</span><h3 dir="auto" data-no-translate>${esc(recipe.title)}</h3><p>${esc(meta)}</p><div class="short-caption-actions"><button type="button" class="primary-button" data-short-detail="${esc(recipe.id)}">${icon('book')}${esc(t('Full recipe'))}</button><button type="button" data-short-play>${esc(t('Pause'))}</button><button type="button" data-short-sound aria-label="${esc(t('Turn sound on'))}">${icon('mute')}</button></div></div></div><aside class="short-actions">${reactionButtons(recipe.id)}<button type="button" data-comments-id="${esc(recipe.id)}">${icon('comment')}<span>${esc(t('Comments'))}</span><b data-comment-count="${esc(recipe.id)}">—</b></button><button type="button" data-share-id="${esc(recipe.id)}">${icon('external')}<span>${esc(t('Share'))}</span></button><p class="social-status" data-social-status="${esc(recipe.id)}" role="status"></p></aside></article>`;
+    }).join('') || `<div class="shorts-empty">${icon('shorts')}<h3>${esc(t('No video shorts yet.'))}</h3><p>${esc(t('Shorts are made from video recipes. Be the first to post one.'))}</p><button type="button" class="primary-button" data-create-short>${icon('plus')}${esc(t('Post a short'))}</button></div>`;
     viewport.querySelectorAll('video').forEach(guardVideo);
     if (!shorts.open) shorts.showModal(); document.body.classList.add('shorts-open');
     observer = new IntersectionObserver(entries => { const visible = entries.filter(e => e.isIntersecting && e.intersectionRatio > .6).sort((a,b) => b.intersectionRatio-a.intersectionRatio)[0]; if (visible) activate(visible.target); }, { root:viewport, threshold:[.6,.8] });
@@ -141,6 +141,7 @@ export function createSocialExperience(api) {
   document.addEventListener('click', async event => {
     const button = event.target.closest('button'); if (!button) return;
     if (button.hasAttribute('data-open-shorts')) { openShorts(); return; }
+    if (button.hasAttribute('data-create-short')) { if (shorts.open) shorts.close(); api.openComposer?.('shorts'); return; }
     if (button.hasAttribute('data-close-shorts')) { shorts.close(); return; }
     if (button.hasAttribute('data-close-comments')) { comments.close(); return; }
     if (button.dataset.shortStep) { move(Number(button.dataset.shortStep)); return; }

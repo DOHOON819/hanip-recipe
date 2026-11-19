@@ -1,5 +1,5 @@
 import { EXTRA_DICTIONARIES, EXTRA_META } from './i18n-extra.js?v=20261115-nine-languages';
-import { SOCIAL_DICTIONARIES } from './i18n-social.js?v=20261115-shorts-v1';
+import { SOCIAL_DICTIONARIES } from './i18n-social.js?v=20261119-video-shorts-v2';
 import { FEEDBACK_DICTIONARIES, FEEDBACK_ALIASES } from './i18n-feedback.js?v=20261115-shorts-v1';
 import { RECENT_DICTIONARIES } from './i18n-recent.js?v=20261115-recent-v1';
 import { PRIVACY_DICTIONARIES } from './i18n-privacy.js?v=20261115-privacy-v1';

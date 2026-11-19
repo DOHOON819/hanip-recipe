@@ -5,7 +5,7 @@ A multilingual recipe-sharing app with a sage-and-beige palette. The community f
 ## Experience
 
 - Discover all recipes, videos, photos or your saved collection.
-- Open **Shorts** to swipe vertically through videos, photos and text recipes. Only the visible video plays, muted initially; comments, recipe details and background tabs pause playback. Touch scrolling, keyboard navigation, sound and native playback controls are available.
+- Open **Shorts** to swipe vertically through video recipes only. Only the visible video plays, muted initially; comments, recipe details and background tabs pause playback. Touch scrolling, keyboard navigation, sound and native playback controls are available.
 - Portrait and landscape viewing use sage/beige margins and uncropped media. The full ingredients and cooking method remain one tap away.
 - Public hearts, likes/dislikes and comments are shared between visitors. Hearts are independent; like/dislike are mutually exclusive and can be withdrawn. Comment authors can delete their own comments. Failed writes preserve the draft and do not increment counts.
 - Browse Korean, Japanese, Chinese, Mexican, American, French, Italian, Indian, Arab and Australian cuisines, alongside brunch, lunchbox, quick meals, pasta, vegetarian, desserts and drinks.
@@ -13,8 +13,8 @@ A multilingual recipe-sharing app with a sage-and-beige palette. The community f
 - Explore quick meals, noodles & pasta, desserts, or a random matching recipe.
 - Save favorites **on the current browser/device**. Bookmarks do not sync between devices.
 - Read ingredients and instructions as a cooking checklist.
-- Share through three short steps: basics, recipe, then an optional photo or video.
-- Every new recipe requires a creator name, title, country/cuisine, category, difficulty, time, servings, a 20–2,000-character description, ingredients with amounts and detailed cooking steps. Older recipes remain readable.
+- Choose a regular recipe post or a Shorts post in the quick composer. Regular posts can use text, a photo or a video; Shorts posts require a playable video.
+- A description is the only required recipe field. Titles are generated automatically, while ingredients, steps, creator name and other details remain optional.
 - Upload JPG/PNG/WebP photos up to 10 MB, or MP4/WebM/MOV videos up to 100 MB. Playback depends on the browser's codec support.
 - Choose full-bleed or uncropped photo framing.
 - Claim or rename a unique creator name without a visible sign-up/login flow.
