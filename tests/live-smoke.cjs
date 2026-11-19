@@ -31,7 +31,8 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     assert.deepEqual(categories.slice(categories.indexOf('인도식'),categories.indexOf('인도식')+4),['인도식','아랍식','호주식','브런치']);
     assert.equal(await page.locator('.side-nav [data-view="recent"]').count(),1);
     assert.equal(await page.locator('#recipeDescription').getAttribute('required'),'');
-    assert.equal(await page.locator('#recipeCuisine').getAttribute('required'),'');
+    assert.equal(await page.locator('#recipeCuisine').getAttribute('required'),null);
+    assert.equal(await page.locator('[data-post-mode="standard"]').getAttribute('aria-pressed'),'true');
     assert.ok(await page.locator('[data-open-shorts]').count()>=3);
     await page.locator('#languageSelect').selectOption('ko');
     assert.equal(await page.locator('html').getAttribute('lang'), 'ko');
@@ -50,6 +51,8 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     assert.equal(await page.locator('html').getAttribute('dir'),'ltr');
     await page.locator('[data-open-shorts]').first().click();
     assert.equal(await page.locator('#shortsDialog').isVisible(),true);
+    const shortsCount=await page.locator('#shortsDialog .short-slide').count();
+    if(shortsCount){assert.equal(await page.locator('#shortsDialog .short-slide video').count(),shortsCount);assert.equal(await page.locator('#shortsDialog .short-slide img, #shortsDialog .short-text-recipe').count(),0);}
     assert.equal(await page.locator('#shortsViewport').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
     await page.locator('[data-close-shorts]').click();
     await page.locator('#languageSelect').selectOption('ko');
@@ -58,6 +61,12 @@ const { chromium } = require(process.env.RECIPE_BOOK_PLAYWRIGHT || 'playwright')
     await page.locator('[data-media-filter="all"]').click();
     await page.locator('#openComposer').click();
     assert.equal(await page.locator('#composerDialog').isVisible(),true,'editor opens without creating a guest account');
+    await page.locator('#recipeDescription').fill('라이브 쇼츠 영상 필수 확인');
+    await page.locator('[data-post-mode="shorts"]').click();
+    assert.equal(await page.locator('[data-media-mode="image"]').isDisabled(),true);
+    assert.equal(await page.locator('[data-media-mode="none"]').isDisabled(),true);
+    await page.locator('#publishButton').click();
+    assert.match(await page.locator('#recipeMessage').innerText(),/영상이 꼭 필요/);
     await page.locator('[data-close-dialog="composerDialog"]').click();
     await page.setViewportSize({width:390,height:844});
     await page.locator('[data-media-filter="recent"]').click();
